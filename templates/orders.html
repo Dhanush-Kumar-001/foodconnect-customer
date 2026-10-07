@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block c %}
+<h1>My orders</h1>
+<div class="card">{% if orders %}<table><tr><th>Order</th><th>Restaurant</th><th>Placed</th><th>Status</th></tr>
+{% for o in orders %}<tr><td><a href="/orders/{{ o.order_id }}">{{ o.order_id }}</a></td><td>{{ R[o.restaurant_id].name }}</td><td>{{ o.created_at }}</td>
+<td><span class="tag {{ o.status|replace(' ','_') }}">{{ o.status }}</span></td></tr>{% endfor %}</table>
+{% else %}<span class="m">No orders yet. Pick a restaurant to place one.</span>{% endif %}</div>{% endblock %}

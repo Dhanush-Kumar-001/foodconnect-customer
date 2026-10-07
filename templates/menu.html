@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block c %}
+<h1>{{ r.name }}</h1>
+<div class="grid">
+{% for n, v in r["menu"].items() %}
+<div class="card"><h3>{{ n }}</h3><div class="m">{{ v[1] }}</div><h3>₹{{ v[0] }}</h3>
+<div class="qty" data-n="{{ n }}" data-p="{{ v[0] }}"><button onclick="chg(this,-1)">−</button><b>0</b><button onclick="chg(this,1)">+</button></div></div>
+{% endfor %}</div>
+<div class="card" id="cart"><h2>Your cart</h2><div id="lines" class="m">Add items to start an order.</div>
+<h3 id="tot"></h3><button id="go" onclick="place()" disabled>Place order</button></div>
+<script>
+function chg(b,d){const e=b.parentNode.querySelector('b');e.textContent=Math.max(0,+e.textContent+d);draw()}
+function draw(){let t=0,h='';document.querySelectorAll('.qty').forEach(q=>{const n=+q.querySelector('b').textContent;if(n){t+=n*q.dataset.p;h+=`<div>${esc(q.dataset.n)} × ${n} — ₹${n*q.dataset.p}</div>`}});
+document.getElementById('lines').innerHTML=h||'Add items to start an order.';document.getElementById('tot').textContent=t?'Total ₹'+t:'';document.getElementById('go').disabled=!t}
+async function place(){const items=[...document.querySelectorAll('.qty')].map(q=>({item:q.dataset.n,quantity:+q.querySelector('b').textContent}));
+const r=await fetch('/api/orders/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({restaurant_id:'{{ rid }}',items})});
+const d=await r.json();d.success?location='/orders/'+d.order_id:alert(d.message)}
+</script>{% endblock %}

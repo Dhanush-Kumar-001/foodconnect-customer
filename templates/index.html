@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block c %}
+<h1>Order from a restaurant</h1>
+<input id="s" placeholder="Search restaurant or dish" oninput="f()">
+<div class="grid" style="margin-top:14px">
+{% for id, r in restaurants.items() %}
+<a class="card rest" href="/menu/{{ id }}" data-k="{{ (r.name ~ ' ' ~ r['menu'].keys()|join(' '))|lower }}">
+<h3>{{ r.name }}</h3><div class="m">{{ r['menu'].keys()|join(', ') }}</div></a>
+{% endfor %}</div>
+<script>function f(){const q=document.getElementById('s').value.toLowerCase();document.querySelectorAll('.rest').forEach(e=>e.style.display=e.dataset.k.includes(q)?'':'none')}</script>
+{% endblock %}

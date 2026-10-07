@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% block c %}
+{% set s = o.stage %}
+<h1>Order {{ o.order_id }} <span class="tag {{ o.status|replace(' ','_') }}">{{ o.status }}</span></h1>
+<div class="m">{{ r.name }}</div>
+<div class="card"><div class="steps">
+{% for label, done in [("Order created",1),("CSV generated",1),("Sent to restaurant",s!='CREATED'),("Restaurant received",s!='CREATED'),("Restaurant processed",s=='RESULT'),("Result received",s=='RESULT')] %}
+{% if done %}<div class="done">✓ {{ label }}</div>{% elif s=='SENT' and loop.index==5 %}<div class="now">● Restaurant processing…</div>{% else %}<div class="todo">○ {{ label }}</div>{% endif %}
+{% endfor %}</div>
+{% if s=='CREATED' %}<p><button id="send" onclick="send()">Send CSV to restaurant</button>
+<span id="msg" class="m"></span></p>{% endif %}</div>
+<div class="card"><table><tr><th>Item</th><th>Qty</th><th>Price</th><th>Status</th></tr>
+{% for i in items %}<tr><td>{{ i.item_name }}</td><td>{{ i.quantity }}</td><td>₹{{ i.unit_price|int }}</td><td><span class="tag {{ i.status }}">{{ i.status }}</span></td></tr>{% endfor %}</table></div>
+<div class="card"><h3>Input CSV — {{ o.input_file }}</h3><div id="in"></div>
+<p><a class="btn o" href="/api/orders/{{ o.order_id }}/input" target="_blank">Open</a> <a class="btn o" href="/api/orders/{{ o.order_id }}/input?download=1">Download</a></p></div>
+{% if o.result_file %}<div class="card"><h3>Output CSV — {{ o.result_file }}</h3><div id="out"></div>
+<p><a class="btn o" href="/api/orders/{{ o.order_id }}/result" target="_blank">Open</a> <a class="btn o" href="/api/orders/{{ o.order_id }}/result?download=1">Download</a></p></div>{% endif %}
+<script>
+showCsv('/api/orders/{{ o.order_id }}/input',document.getElementById('in'));
+{% if o.result_file %}showCsv('/api/orders/{{ o.order_id }}/result',document.getElementById('out'));{% endif %}
+async function send(){const b=document.getElementById('send');b.disabled=true;document.getElementById('msg').textContent='Sending… (can take ~1 min if the restaurant app is waking up)';
+const r=await fetch('/api/orders/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:'{{ o.order_id }}'})});
+const d=await r.json();d.success?location.reload():(alert(d.message),b.disabled=false)}
+{% if s!='RESULT' %}setInterval(async()=>{const d=await (await fetch('/api/orders/{{ o.order_id }}')).json();if(d.stage!=='{{ s }}')location.reload()},3000);{% endif %}
+</script>{% endblock %}
