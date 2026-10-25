@@ -1,13 +1,65 @@
 import csv, io, json, os, sqlite3
 from datetime import datetime, date, timedelta
 import requests
-from flask import Flask, abort, g, jsonify, render_template, request, send_file
+from flask import Flask, abort, g, jsonify, redirect, render_template, request, send_file, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.environ.get("DATA_DIR", BASE)
 RESTAURANT_API_URL = os.environ.get("RESTAURANT_API_URL", "http://127.0.0.1:5001").rstrip("/")
 API_KEY = os.environ.get("API_KEY", "demo-key")
+
+DEMO_USERS = {
+    "C001": {
+        "id": "C001",
+        "name": "Dhanush Kumar",
+        "role": "Software Engineer & Team Lead",
+        "avatar": "👨‍💻",
+        "email": "dhanush@foodconnect.demo",
+        "initial_balance": 1500.0,
+    },
+    "C002": {
+        "id": "C002",
+        "name": "Priya Sharma",
+        "role": "UI/UX Product Designer",
+        "avatar": "👩‍🎨",
+        "email": "priya@foodconnect.demo",
+        "initial_balance": 1200.0,
+    },
+    "C003": {
+        "id": "C003",
+        "name": "Rahul Verma",
+        "role": "Student & Fitness Enthusiast",
+        "avatar": "🏃‍♂️",
+        "email": "rahul@foodconnect.demo",
+        "initial_balance": 800.0,
+    },
+    "C004": {
+        "id": "C004",
+        "name": "Ananya Patel",
+        "role": "Marketing Campaign Specialist",
+        "avatar": "👩‍💼",
+        "email": "ananya@foodconnect.demo",
+        "initial_balance": 2000.0,
+    },
+    "C005": {
+        "id": "C005",
+        "name": "Vikram Singh",
+        "role": "Food Critic & Community Host",
+        "avatar": "👨‍🍳",
+        "email": "vikram@foodconnect.demo",
+        "initial_balance": 1000.0,
+    },
+}
+
+def get_current_user():
+    cid = session.get("customer_id")
+    if not cid or cid not in DEMO_USERS:
+        cid = "C001"
+        session["customer_id"] = "C001"
+        session["customer_name"] = DEMO_USERS["C001"]["name"]
+    return cid, session.get("customer_name", DEMO_USERS[cid]["name"])
+
 CUSTOMER_ID = "C001"
 CUSTOMER_NAME = "Dhanush Kumar"
 OUT, IN = (os.path.join(DATA, d) for d in ("generated_orders", "received_results"))
@@ -43,6 +95,7 @@ RESTAURANTS = {
 }
 
 app = Flask(__name__, template_folder=os.path.join(BASE, "templates"), static_folder=os.path.join(BASE, "static"))
+app.secret_key = os.environ.get("SECRET_KEY", "foodconnect-demo-secret-key-2026")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.config["MAX_CONTENT_LENGTH"] = 1_000_000
 app.jinja_env.globals.update(min=min, max=max)
@@ -134,17 +187,19 @@ with sqlite3.connect(DB) as c:
     if "payment_method" not in cols:
         cur.execute("ALTER TABLE orders ADD COLUMN payment_method TEXT DEFAULT 'COD'")
 
-    # Seed initial wallet for customer C001 if not existing
-    cur.execute("SELECT balance FROM wallets WHERE customer_id=?", (CUSTOMER_ID,))
-    if not cur.fetchone():
-        ts = datetime.now().isoformat(timespec="seconds")
-        cur.execute("INSERT INTO wallets(customer_id, balance, updated_at) VALUES(?, ?, ?)", (CUSTOMER_ID, 1500.0, ts))
-        cur.execute(
-            """INSERT INTO wallet_transactions(customer_id, amount, type, description, created_at)
-            VALUES(?, ?, ?, ?, ?)""",
-            (CUSTOMER_ID, 1500.0, "CREDIT", "Welcome Promotional Credits", ts),
-        )
-        c.commit()
+    # Seed initial wallets for all 5 demo personas if not existing
+    for uid, uinfo in DEMO_USERS.items():
+        cur.execute("SELECT balance FROM wallets WHERE customer_id=?", (uid,))
+        if not cur.fetchone():
+            ts = datetime.now().isoformat(timespec="seconds")
+            bal = uinfo["initial_balance"]
+            cur.execute("INSERT INTO wallets(customer_id, balance, updated_at) VALUES(?, ?, ?)", (uid, bal, ts))
+            cur.execute(
+                """INSERT INTO wallet_transactions(customer_id, amount, type, description, created_at)
+                VALUES(?, ?, ?, ?, ?)""",
+                (uid, bal, "CREDIT", f"Welcome Promotional Credits for {uinfo['name']}", ts),
+            )
+    c.commit()
 
 
 def err(msg, code):
@@ -170,59 +225,68 @@ def overall(statuses):
     return "PARTIALLY ACCEPTED"
 
 
-# ---------- Wallet Helpers ----------
-def get_wallet():
-    row = db().execute("SELECT * FROM wallets WHERE customer_id=?", (CUSTOMER_ID,)).fetchone()
+# ---------- Multi-User Wallet Helpers ----------
+def get_wallet(cid=None):
+    if not cid:
+        cid, _ = get_current_user()
+    row = db().execute("SELECT * FROM wallets WHERE customer_id=?", (cid,)).fetchone()
     if not row:
         ts = now()
-        db().execute("INSERT INTO wallets(customer_id, balance, updated_at) VALUES(?, ?, ?)", (CUSTOMER_ID, 1500.0, ts))
+        bal = DEMO_USERS.get(cid, {}).get("initial_balance", 1500.0)
+        db().execute("INSERT INTO wallets(customer_id, balance, updated_at) VALUES(?, ?, ?)", (cid, bal, ts))
         db().commit()
-        return {"customer_id": CUSTOMER_ID, "balance": 1500.0}
+        return {"customer_id": cid, "balance": bal}
     return dict(row)
 
 
-def deduct_wallet(amount, desc):
-    w = get_wallet()
+def deduct_wallet(amount, desc, cid=None):
+    if not cid:
+        cid, _ = get_current_user()
+    w = get_wallet(cid)
     if w["balance"] < amount:
         return False, "Insufficient wallet balance"
     new_bal = w["balance"] - amount
     ts = now()
-    db().execute("UPDATE wallets SET balance=?, updated_at=? WHERE customer_id=?", (new_bal, ts, CUSTOMER_ID))
+    db().execute("UPDATE wallets SET balance=?, updated_at=? WHERE customer_id=?", (new_bal, ts, cid))
     db().execute(
         "INSERT INTO wallet_transactions(customer_id, amount, type, description, created_at) VALUES(?,?,?,?,?)",
-        (CUSTOMER_ID, amount, "DEBIT", desc, ts),
+        (cid, amount, "DEBIT", desc, ts),
     )
     db().commit()
     return True, new_bal
 
 
-def credit_wallet(amount, desc):
-    w = get_wallet()
+def credit_wallet(amount, desc, cid=None):
+    if not cid:
+        cid, _ = get_current_user()
+    w = get_wallet(cid)
     new_bal = w["balance"] + amount
     ts = now()
-    db().execute("UPDATE wallets SET balance=?, updated_at=? WHERE customer_id=?", (new_bal, ts, CUSTOMER_ID))
+    db().execute("UPDATE wallets SET balance=?, updated_at=? WHERE customer_id=?", (new_bal, ts, cid))
     db().execute(
         "INSERT INTO wallet_transactions(customer_id, amount, type, description, created_at) VALUES(?,?,?,?,?)",
-        (CUSTOMER_ID, amount, "CREDIT", desc, ts),
+        (cid, amount, "CREDIT", desc, ts),
     )
     db().commit()
     return True, new_bal
 
 
-# ---------- Notification & Refund Helpers ----------
-def add_notification(title, message, ntype="INFO"):
+# ---------- Multi-User Notification & Refund Helpers ----------
+def add_notification(title, message, ntype="INFO", cid=None):
+    if not cid:
+        cid, _ = get_current_user()
     ts = now()
     db().execute(
         "INSERT INTO notifications(customer_id, title, message, type, is_read, created_at) VALUES(?,?,?,?,0,?)",
-        (CUSTOMER_ID, title, message, ntype, ts),
+        (cid, title, message, ntype, ts),
     )
     db().commit()
 
 
 def check_group_deals_refunds():
-    """Checks if any group offers joined by the customer have expired without meeting participant quotas.
-    If expired, automatically refunds the paid amount to the website wallet, records a transaction,
-    and creates a customer notification confirming the refund."""
+    """Checks if any group offers joined by any customer have expired without meeting participant quotas.
+    If expired, automatically refunds the paid amount to each participant's website wallet,
+    records a transaction, and creates a customer notification confirming the refund."""
     try:
         r = requests.get(f"{RESTAURANT_API_URL}/api/group-offers", timeout=3)
         if not r.ok:
@@ -232,8 +296,7 @@ def check_group_deals_refunds():
         return
 
     joined = db().execute(
-        "SELECT * FROM group_participations WHERE customer_id=? AND status='JOINED'",
-        (CUSTOMER_ID,)
+        "SELECT * FROM group_participations WHERE status='JOINED'"
     ).fetchall()
 
     for p in joined:
@@ -241,11 +304,12 @@ def check_group_deals_refunds():
         if not offer:
             continue
 
+        cid = p["customer_id"]
         if offer.get("status") == "EXPIRED":
             amount = float(p["amount_paid"])
             item = p["item_name"]
-            # Refund wallet immediately
-            credit_wallet(amount, f"Refund: Group Offer '{item}' expired without meeting target")
+            # Refund wallet immediately for this participant
+            credit_wallet(amount, f"Refund: Group Offer '{item}' expired without meeting target", cid=cid)
             ts = now()
             db().execute("UPDATE group_participations SET status='REFUNDED', refunded_at=? WHERE id=?", (ts, p["id"]))
             db().commit()
@@ -253,7 +317,8 @@ def check_group_deals_refunds():
             add_notification(
                 title="Group Deal Refund Confirmed",
                 message=f"The group-buying offer for '{item}' expired without reaching the required participants. ₹{int(amount)} has been automatically refunded to your website wallet.",
-                ntype="REFUND"
+                ntype="REFUND",
+                cid=cid,
             )
         elif offer.get("status") == "SUCCESS":
             db().execute("UPDATE group_participations SET status='ACTIVATED' WHERE id=?", (p["id"],))
@@ -261,18 +326,65 @@ def check_group_deals_refunds():
             add_notification(
                 title="Group Deal Activated!",
                 message=f"The group-buying offer for '{p['item_name']}' reached its target and is now successfully activated!",
-                ntype="SUCCESS"
+                ntype="SUCCESS",
+                cid=cid,
             )
 
 
 @app.context_processor
 def inject_common():
-    w = get_wallet()
+    cid, cname = get_current_user()
+    w = get_wallet(cid)
     try:
-        unread = db().execute("SELECT COUNT(*) FROM notifications WHERE customer_id=? AND is_read=0", (CUSTOMER_ID,)).fetchone()[0]
+        unread = db().execute("SELECT COUNT(*) FROM notifications WHERE customer_id=? AND is_read=0", (cid,)).fetchone()[0]
     except Exception:
         unread = 0
-    return {"wallet": w, "unread_notifications_count": unread}
+    return {
+        "current_user": DEMO_USERS.get(cid, {"id": cid, "name": cname, "avatar": "👤", "role": "Customer"}),
+        "demo_users": DEMO_USERS,
+        "wallet": w,
+        "unread_notifications_count": unread,
+    }
+
+
+# ---------- Authentication & Persona Switching ----------
+@app.route("/login", methods=["GET", "POST"])
+def login_page():
+    if request.method == "POST":
+        cid = request.form.get("customer_id") or (request.get_json(silent=True) or {}).get("customer_id")
+        if cid in DEMO_USERS:
+            session["customer_id"] = cid
+            session["customer_name"] = DEMO_USERS[cid]["name"]
+            next_url = request.args.get("next") or "/"
+            if request.is_json:
+                return jsonify(success=True, customer_id=cid, customer_name=DEMO_USERS[cid]["name"], redirect=next_url)
+            return redirect(next_url)
+        return render_template("login.html", users=list(DEMO_USERS.values()), error="Please select a valid persona.", next_url=request.args.get("next", "/"))
+
+    users_with_balance = []
+    for uid, uinfo in DEMO_USERS.items():
+        w = db().execute("SELECT balance FROM wallets WHERE customer_id=?", (uid,)).fetchone()
+        bal = w["balance"] if w else uinfo["initial_balance"]
+        users_with_balance.append({**uinfo, "balance": bal})
+
+    return render_template("login.html", users=users_with_balance, current_id=session.get("customer_id", "C001"), next_url=request.args.get("next", "/"))
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
+
+@app.post("/api/switch-user")
+def api_switch_user():
+    data = request.get_json(silent=True) or {}
+    cid = data.get("customer_id")
+    if cid in DEMO_USERS:
+        session["customer_id"] = cid
+        session["customer_name"] = DEMO_USERS[cid]["name"]
+        return jsonify(success=True, customer_id=cid, customer_name=DEMO_USERS[cid]["name"])
+    return err("Invalid user persona", 400)
 
 
 # ---------- Live Inventory Fetcher ----------
@@ -287,7 +399,6 @@ def fetch_live_inventory(rid=None):
             return r.json().get("inventory", {})
     except Exception:
         pass
-    # Fallback default inventory if restaurant backend is offline
     fallback = {}
     for r_key, r_info in RESTAURANTS.items():
         fallback[r_key] = {}
@@ -303,40 +414,44 @@ def fetch_live_inventory(rid=None):
 # ---------- Pages ----------
 @app.route("/")
 def index():
+    cid, _ = get_current_user()
     check_group_deals_refunds()
-    wallet = get_wallet()
-    # Check due scheduled orders automatically
+    wallet = get_wallet(cid)
     check_and_run_due_orders()
     return render_template("index.html", restaurants=RESTAURANTS, wallet=wallet)
 
 
 @app.route("/menu/<rid>")
 def menu(rid):
+    cid, _ = get_current_user()
     r = RESTAURANTS.get(rid) or abort(404)
-    wallet = get_wallet()
+    wallet = get_wallet(cid)
     inv_data = fetch_live_inventory(rid).get(rid, {})
     return render_template("menu.html", rid=rid, r=r, wallet=wallet, inventory=inv_data)
 
 
 @app.route("/orders")
 def orders():
-    rows = db().execute("SELECT * FROM orders ORDER BY created_at DESC").fetchall()
-    wallet = get_wallet()
+    cid, _ = get_current_user()
+    rows = db().execute("SELECT * FROM orders WHERE customer_id=? ORDER BY created_at DESC", (cid,)).fetchall()
+    wallet = get_wallet(cid)
     return render_template("orders.html", orders=rows, R=RESTAURANTS, wallet=wallet)
 
 
 @app.route("/orders/<oid>")
 def order_page(oid):
+    cid, _ = get_current_user()
     o = get_order(oid) or abort(404)
-    wallet = get_wallet()
+    wallet = get_wallet(cid)
     return render_template("order.html", o=o, items=items_of(oid), r=RESTAURANTS[o["restaurant_id"]], wallet=wallet)
 
 
 @app.route("/planner")
 def planner_page():
-    wallet = get_wallet()
+    cid, _ = get_current_user()
+    wallet = get_wallet(cid)
     check_and_run_due_orders()
-    scheduled = db().execute("SELECT * FROM scheduled_orders ORDER BY scheduled_date ASC, scheduled_time ASC").fetchall()
+    scheduled = db().execute("SELECT * FROM scheduled_orders WHERE customer_id=? ORDER BY scheduled_date ASC, scheduled_time ASC", (cid,)).fetchall()
     enriched = []
     for s in scheduled:
         raw_items = json.loads(s["items_json"]) if s["items_json"] else []
@@ -353,16 +468,18 @@ def planner_page():
 
 @app.route("/wallet")
 def wallet_page():
+    cid, _ = get_current_user()
     check_group_deals_refunds()
-    wallet = get_wallet()
-    txs = db().execute("SELECT * FROM wallet_transactions WHERE customer_id=? ORDER BY created_at DESC", (CUSTOMER_ID,)).fetchall()
+    wallet = get_wallet(cid)
+    txs = db().execute("SELECT * FROM wallet_transactions WHERE customer_id=? ORDER BY created_at DESC", (cid,)).fetchall()
     return render_template("wallet.html", wallet=wallet, transactions=txs)
 
 
 @app.route("/group-deals")
 def group_deals_page():
+    cid, _ = get_current_user()
     check_group_deals_refunds()
-    wallet = get_wallet()
+    wallet = get_wallet(cid)
     offers = []
     try:
         r = requests.get(f"{RESTAURANT_API_URL}/api/group-offers", timeout=3)
@@ -370,14 +487,15 @@ def group_deals_page():
             offers = r.json().get("offers", [])
     except Exception:
         pass
-    parts = db().execute("SELECT * FROM group_participations WHERE customer_id=?", (CUSTOMER_ID,)).fetchall()
+    parts = db().execute("SELECT * FROM group_participations WHERE customer_id=?", (cid,)).fetchall()
     parts_map = {p["offer_id"]: dict(p) for p in parts}
     return render_template("group_deals.html", offers=offers, wallet=wallet, my_parts=parts_map)
 
 
 @app.route("/charity")
 def charity_page():
-    wallet = get_wallet()
+    cid, _ = get_current_user()
+    wallet = get_wallet(cid)
     donations = []
     try:
         r = requests.get(f"{RESTAURANT_API_URL}/api/donations", timeout=3)
@@ -388,9 +506,22 @@ def charity_page():
     return render_template("charity.html", donations=donations, wallet=wallet)
 
 
+@app.post("/api/donations/<did>/claim")
+def api_forward_charity_claim(did):
+    """Proxy claim request to restaurant portal so charities can claim from customer portal too."""
+    data = request.get_json(silent=True) or {}
+    try:
+        resp = requests.post(f"{RESTAURANT_API_URL}/api/donations/{did}/claim", json=data, timeout=5)
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return err(f"Restaurant charity service offline: {e}", 502)
+
+
+
 # ---------- Core Order API (CSV Generation & Transmission) ----------
 @app.post("/api/orders/create")
 def create_order():
+    cid, cname = get_current_user()
     data = request.get_json(silent=True) or {}
     rid = data.get("restaurant_id")
     r = RESTAURANTS.get(rid)
@@ -407,7 +538,7 @@ def create_order():
 
     # Check Wallet Payment if selected
     if pay_method == "WALLET":
-        ok, msg = deduct_wallet(total, f"Food Order at {r['name']}")
+        ok, msg = deduct_wallet(total, f"Food Order at {r['name']}", cid=cid)
         if not ok:
             return err(f"Wallet Payment Failed: {msg}. Please top up your wallet.", 400)
 
@@ -419,12 +550,12 @@ def create_order():
         w = csv.writer(f)
         w.writerow(["order_id", "customer_id", "restaurant_id", "item", "quantity", "unit_price"])
         for n, q in items:
-            w.writerow([oid, CUSTOMER_ID, rid, n, q, r["menu"][n][0]])
+            w.writerow([oid, cid, rid, n, q, r["menu"][n][0]])
 
     db().execute(
         """INSERT INTO orders(order_id,customer_id,restaurant_id,input_file,payment_method,created_at,updated_at)
         VALUES(?,?,?,?,?,?,?)""",
-        (oid, CUSTOMER_ID, rid, fname, pay_method, ts, ts),
+        (oid, cid, rid, fname, pay_method, ts, ts),
     )
     db().executemany(
         "INSERT INTO order_items(order_id,item_name,quantity,unit_price) VALUES(?,?,?,?)",
@@ -522,7 +653,7 @@ def receive_result():
 
     # Auto-refund rejected items if customer paid by wallet!
     if rejected_refund > 0:
-        credit_wallet(rejected_refund, f"Refund for unfulfilled items on #{oid}")
+        credit_wallet(rejected_refund, f"Refund for unfulfilled items on #{oid}", cid=order["customer_id"])
 
     status = overall(r["status"].upper() for r in rows)
     db().execute("UPDATE orders SET result_file=?, stage='RESULT', status=?, updated_at=? WHERE order_id=?", (fname, status, now(), oid))
@@ -530,23 +661,25 @@ def receive_result():
     return jsonify(success=True, order_id=oid, message="Order result received")
 
 
-# ---------- Feature 1: Wallet API ----------
+# ---------- Feature 1: Multi-User Wallet API ----------
 @app.get("/api/wallet")
 def api_get_wallet():
-    w = get_wallet()
-    txs = db().execute("SELECT * FROM wallet_transactions WHERE customer_id=? ORDER BY created_at DESC LIMIT 20", (CUSTOMER_ID,)).fetchall()
+    cid, _ = get_current_user()
+    w = get_wallet(cid)
+    txs = db().execute("SELECT * FROM wallet_transactions WHERE customer_id=? ORDER BY created_at DESC LIMIT 20", (cid,)).fetchall()
     return jsonify(success=True, balance=w["balance"], transactions=[dict(t) for t in txs])
 
 
 @app.post("/api/wallet/topup")
 def api_wallet_topup():
+    cid, _ = get_current_user()
     data = request.get_json(silent=True) or {}
     try:
         amount = float(data.get("amount", 0))
         assert amount > 0
     except (ValueError, AssertionError):
         return err("Invalid amount", 400)
-    ok, new_bal = credit_wallet(amount, f"Wallet Top-Up (via Online Banking/Card)")
+    ok, new_bal = credit_wallet(amount, "Wallet Top-Up (via Online Banking/Card)", cid=cid)
     return jsonify(success=True, balance=new_bal, message=f"Successfully added ₹{int(amount)} to wallet!")
 
 
@@ -556,6 +689,7 @@ def api_create_scheduled_order():
     """Customers select multiple food items and specify quantities when planning a meal.
     Respective restaurant receives notification containing selected items, quantities, date & time,
     and reserves the scheduled food items to ensure availability."""
+    cid, cname = get_current_user()
     data = request.get_json(silent=True) or {}
     rid = data.get("restaurant_id")
     meal_type = data.get("meal_type", "LUNCH")
@@ -588,7 +722,7 @@ def api_create_scheduled_order():
         """INSERT INTO scheduled_orders(id, customer_id, restaurant_id, meal_type, scheduled_date,
         scheduled_time, items_json, total_amount, status, created_at)
         VALUES(?,?,?,?,?,?,?,?,?,?)""",
-        (sid, CUSTOMER_ID, rid, meal_type, sched_date, sched_time, json.dumps(valid_items), total, "SCHEDULED", ts),
+        (sid, cid, rid, meal_type, sched_date, sched_time, json.dumps(valid_items), total, "SCHEDULED", ts),
     )
     db().commit()
 
@@ -600,7 +734,8 @@ def api_create_scheduled_order():
             f"{RESTAURANT_API_URL}/api/scheduled/notify",
             json={
                 "scheduled_id": sid,
-                "customer_id": CUSTOMER_ID,
+                "customer_id": cid,
+                "customer_name": cname,
                 "restaurant_id": rid,
                 "meal_type": meal_type,
                 "scheduled_date": sched_date,
@@ -620,6 +755,7 @@ def api_create_scheduled_order():
         title="Meal Plan Scheduled & Reserved",
         message=f"Meal plan #{sid} scheduled for {sched_date} ({meal_type}) at {r['name']}. Portions reserved with kitchen.",
         ntype="SUCCESS",
+        cid=cid,
     )
 
     return jsonify(
@@ -662,11 +798,13 @@ def api_scheduled_advance_notice():
     )
     db().commit()
 
+    cid = s["customer_id"]
     rname = RESTAURANTS.get(s["restaurant_id"], {}).get("name", "Restaurant")
     add_notification(
         title=f"⚠️ Advance Notice from {rname}",
         message=f"{rname} cannot prepare your scheduled meal (#{sid}) on {s['scheduled_date']} ({s['meal_type']}). Reason: {reason}. No amount will be charged.",
         ntype="WARNING",
+        cid=cid,
     )
     return jsonify(success=True, message="Advance cancellation notice received and customer notified")
 
@@ -682,9 +820,10 @@ def check_and_run_due_orders():
 
     for s in due:
         sid = s["id"]
+        cid = s["customer_id"]
         total = float(s["total_amount"])
         # Check wallet balance
-        ok, msg = deduct_wallet(total, f"Scheduled Meal #{sid} Auto-Deduction")
+        ok, msg = deduct_wallet(total, f"Scheduled Meal #{sid} Auto-Deduction", cid=cid)
         if not ok:
             db().execute("UPDATE scheduled_orders SET status='FAILED', failure_reason=? WHERE id=?", (msg, sid))
             db().commit()
@@ -701,12 +840,12 @@ def check_and_run_due_orders():
             w = csv.writer(f)
             w.writerow(["order_id", "customer_id", "restaurant_id", "item", "quantity", "unit_price"])
             for i in items:
-                w.writerow([oid, CUSTOMER_ID, rid, i["item"], i["quantity"], r["menu"][i["item"]][0]])
+                w.writerow([oid, cid, rid, i["item"], i["quantity"], r["menu"][i["item"]][0]])
 
         db().execute(
             """INSERT INTO orders(order_id,customer_id,restaurant_id,input_file,payment_method,created_at,updated_at)
             VALUES(?,?,?,?,?,?,?)""",
-            (oid, CUSTOMER_ID, rid, fname, "WALLET", ts, ts),
+            (oid, cid, rid, fname, "WALLET", ts, ts),
         )
         db().executemany(
             "INSERT INTO order_items(order_id,item_name,quantity,unit_price) VALUES(?,?,?,?)",
@@ -721,7 +860,7 @@ def check_and_run_due_orders():
                 requests.post(
                     f"{RESTAURANT_API_URL}/api/orders/upload",
                     files={"file": (fname, f, "text/csv")},
-                    data={"order_id": oid, "callback_url": request.host_url.rstrip("/") if request else "http://127.0.0.1:5000"},
+                    data={"order_id": oid, "callback_url": "http://127.0.0.1:5000"},
                     headers={"X-API-Key": API_KEY},
                     timeout=10,
                 )
@@ -740,14 +879,16 @@ def trigger_run_due():
 # ---------- Notifications API ----------
 @app.get("/api/notifications")
 def api_get_notifications():
-    rows = db().execute("SELECT * FROM notifications WHERE customer_id=? ORDER BY created_at DESC LIMIT 30", (CUSTOMER_ID,)).fetchall()
+    cid, _ = get_current_user()
+    rows = db().execute("SELECT * FROM notifications WHERE customer_id=? ORDER BY created_at DESC LIMIT 30", (cid,)).fetchall()
     unread = sum(1 for r in rows if not r["is_read"])
     return jsonify(success=True, notifications=[dict(r) for r in rows], unread_count=unread)
 
 
 @app.post("/api/notifications/clear")
 def api_clear_notifications():
-    db().execute("UPDATE notifications SET is_read=1 WHERE customer_id=?", (CUSTOMER_ID,))
+    cid, _ = get_current_user()
+    db().execute("UPDATE notifications SET is_read=1 WHERE customer_id=?", (cid,))
     db().commit()
     return jsonify(success=True, message="All notifications marked as read")
 
@@ -755,6 +896,7 @@ def api_clear_notifications():
 # ---------- Feature 4: Customer Group Buying API ----------
 @app.post("/api/group-deals/<gid>/join")
 def api_join_group_deal(gid):
+    cid, cname = get_current_user()
     # Fetch offer details from restaurant
     try:
         r = requests.get(f"{RESTAURANT_API_URL}/api/group-offers", timeout=3)
@@ -767,16 +909,24 @@ def api_join_group_deal(gid):
     except Exception as e:
         return err(f"Restaurant service offline: {e}", 502)
 
+    # Check if this user already joined
+    existing = db().execute(
+        "SELECT id FROM group_participations WHERE offer_id=? AND customer_id=? AND status='JOINED'",
+        (gid, cid),
+    ).fetchone()
+    if existing:
+        return err("You have already joined this group deal!", 409)
+
     price = float(offer["group_price"])
     # Deduct participation price from customer wallet
-    ok, msg = deduct_wallet(price, f"Joined Group Deal for {offer['item_name']} (₹{int(price)})")
+    ok, msg = deduct_wallet(price, f"Joined Group Deal for {offer['item_name']} (₹{int(price)})", cid=cid)
     if not ok:
         return err(f"Wallet balance insufficient (₹{int(price)} required). Please top up.", 400)
 
     # Record in group_participations
     db().execute(
         "INSERT INTO group_participations(offer_id, customer_id, item_name, amount_paid, status, joined_at) VALUES(?,?,?,?,?,?)",
-        (gid, CUSTOMER_ID, offer["item_name"], price, "JOINED", now()),
+        (gid, cid, offer["item_name"], price, "JOINED", now()),
     )
     db().commit()
 
@@ -784,14 +934,14 @@ def api_join_group_deal(gid):
     try:
         resp = requests.post(
             f"{RESTAURANT_API_URL}/api/group-offers/{gid}/join",
-            json={"customer_id": CUSTOMER_ID, "customer_name": CUSTOMER_NAME},
+            json={"customer_id": cid, "customer_name": cname},
             timeout=5,
         )
         data = resp.json()
         if not resp.ok or not data.get("success"):
             # Refund wallet on join failure
-            credit_wallet(price, f"Refund: Could not join group deal #{gid}")
-            db().execute("DELETE FROM group_participations WHERE offer_id=? AND customer_id=?", (gid, CUSTOMER_ID))
+            credit_wallet(price, f"Refund: Could not join group deal #{gid}", cid=cid)
+            db().execute("DELETE FROM group_participations WHERE offer_id=? AND customer_id=?", (gid, cid))
             db().commit()
             return err(data.get("message", "Failed to join group deal"), resp.status_code)
 
@@ -799,6 +949,7 @@ def api_join_group_deal(gid):
             title="Joined Group Deal",
             message=f"You joined the group deal for '{offer['item_name']}' at ₹{int(price)}. 100% wallet refund guaranteed if quota is not reached before deadline.",
             ntype="SUCCESS",
+            cid=cid,
         )
 
         return jsonify(
@@ -807,8 +958,8 @@ def api_join_group_deal(gid):
             message=data.get("message", "Joined group deal successfully!"),
         )
     except Exception as e:
-        credit_wallet(price, f"Refund: Connection error joining deal #{gid}")
-        db().execute("DELETE FROM group_participations WHERE offer_id=? AND customer_id=?", (gid, CUSTOMER_ID))
+        credit_wallet(price, f"Refund: Connection error joining deal #{gid}", cid=cid)
+        db().execute("DELETE FROM group_participations WHERE offer_id=? AND customer_id=?", (gid, cid))
         db().commit()
         return err(f"Network error: {e}", 502)
 

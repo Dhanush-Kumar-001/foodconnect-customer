@@ -42,6 +42,42 @@
           <span class="wallet-icon">💳</span>
           <span class="wallet-text">Wallet: <b>₹{{ wallet.balance|int if wallet else 1500 }}</b></span>
         </a>
+
+        <!-- Persona Demo Switcher Dropdown -->
+        <div class="persona-wrapper">
+          <button class="persona-btn" onclick="togglePersonaDropdown()" id="persona_btn" title="Switch Demo User Persona">
+            <span class="persona-avatar">{{ current_user.avatar }}</span>
+            <span class="persona-name">{{ current_user.name.split()[0] }}</span>
+            <span class="persona-arrow">▾</span>
+          </button>
+
+          <div id="persona_dropdown" class="persona-dropdown" style="display:none">
+            <div class="persona-dropdown-header">
+              <div style="font-weight:700; font-size:13px; color:#0f172a">👥 Demo Personas (5 Users)</div>
+              <div style="font-size:11px; color:#64748b">Switch accounts with 1 click</div>
+            </div>
+            <div class="persona-list">
+              {% for uid, u in demo_users.items() %}
+              <div class="persona-item {{ 'active-persona' if uid == current_user.id else '' }}" onclick="selectPersona('{{ uid }}')">
+                <span class="persona-item-avatar">{{ u.avatar }}</span>
+                <div class="persona-item-details">
+                  <div class="persona-item-name">
+                    {{ u.name }}
+                    {% if uid == current_user.id %}
+                    <span class="current-badge">Active</span>
+                    {% endif %}
+                  </div>
+                  <div class="persona-item-role">{{ u.role }}</div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="persona-dropdown-footer">
+              <a href="/login" class="persona-footer-link">Full Persona Showcase →</a>
+              <a href="/logout" class="persona-footer-link" style="color:#dc2626">Logout</a>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -51,6 +87,7 @@
 
   <script>
   let notifOpen = false;
+  let personaOpen = false;
 
   async function loadNotifications() {
     try {
@@ -99,7 +136,39 @@
     const dd = document.getElementById('notif_dropdown');
     notifOpen = !notifOpen;
     dd.style.display = notifOpen ? 'flex' : 'none';
-    if (notifOpen) loadNotifications();
+    if (notifOpen) {
+      if (personaOpen) {
+        document.getElementById('persona_dropdown').style.display = 'none';
+        personaOpen = false;
+      }
+      loadNotifications();
+    }
+  }
+
+  function togglePersonaDropdown() {
+    const dd = document.getElementById('persona_dropdown');
+    personaOpen = !personaOpen;
+    dd.style.display = personaOpen ? 'flex' : 'none';
+    if (personaOpen && notifOpen) {
+      document.getElementById('notif_dropdown').style.display = 'none';
+      notifOpen = false;
+    }
+  }
+
+  async function selectPersona(cid) {
+    try {
+      const resp = await fetch('/api/switch-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: cid })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        window.location.reload();
+      }
+    } catch (e) {
+      console.error('Failed to switch persona', e);
+    }
   }
 
   async function markAllNotificationsRead() {
@@ -109,10 +178,15 @@
 
   // Close dropdown on outside click
   document.addEventListener('click', (e) => {
-    const wrapper = document.querySelector('.notif-wrapper');
-    if (wrapper && !wrapper.contains(e.target) && notifOpen) {
+    const nWrapper = document.querySelector('.notif-wrapper');
+    if (nWrapper && !nWrapper.contains(e.target) && notifOpen) {
       document.getElementById('notif_dropdown').style.display = 'none';
       notifOpen = false;
+    }
+    const pWrapper = document.querySelector('.persona-wrapper');
+    if (pWrapper && !pWrapper.contains(e.target) && personaOpen) {
+      document.getElementById('persona_dropdown').style.display = 'none';
+      personaOpen = false;
     }
   });
 

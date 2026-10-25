@@ -1,0 +1,103 @@
+{% extends "base.html" %}{% block c %}
+<div class="login-page-container">
+  <div class="page-header" style="text-align:center; display:block; margin-bottom:28px">
+    <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(11,122,90,0.1); color:var(--a); padding:6px 16px; border-radius:20px; font-weight:700; font-size:13px; margin-bottom:10px">
+      👥 Multi-Persona Demonstration Mode
+    </div>
+    <h1 style="font-size:30px; margin-bottom:8px">Select a Demo Customer Account</h1>
+    <p class="subtitle" style="max-width:680px; margin:0 auto; font-size:15px">
+      Demonstrate FoodConnect's multi-user capabilities. Switch between 5 distinct customer profiles, each equipped with an isolated wallet, order history, scheduled meal plans, and group-buying status.
+    </p>
+  </div>
+
+  {% if error %}
+  <div style="background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; padding:12px 16px; border-radius:8px; margin-bottom:20px; font-weight:600; text-align:center">
+    ⚠️ {{ error }}
+  </div>
+  {% endif %}
+
+  <!-- 5 Persona Cards Grid -->
+  <div class="persona-grid">
+    {% for u in users %}
+    <div class="card persona-showcase-card {{ 'active-persona-card' if u.id == current_id else '' }}">
+      {% if u.id == current_id %}
+      <div class="persona-current-flag">
+        <span class="pulse-dot"></span> Logged In
+      </div>
+      {% endif %}
+
+      <div class="persona-card-header">
+        <div class="persona-big-avatar">{{ u.avatar }}</div>
+        <div>
+          <span class="user-id-tag">{{ u.id }}</span>
+          <h2 style="margin:4px 0 2px 0; font-size:20px; font-weight:800">{{ u.name }}</h2>
+          <span class="m" style="font-size:12.5px; font-weight:500">{{ u.role }}</span>
+        </div>
+      </div>
+
+      <div class="persona-card-body">
+        <div class="persona-stat-box">
+          <span class="m" style="font-size:12px; font-weight:600">Website Wallet Balance</span>
+          <div class="persona-wallet-val">₹{{ u.balance|int }}</div>
+        </div>
+
+        <div class="persona-email">
+          📧 {{ u.email }}
+        </div>
+      </div>
+
+      <div class="persona-card-footer">
+        <form method="POST" action="/login?next={{ next_url }}">
+          <input type="hidden" name="customer_id" value="{{ u.id }}">
+          {% if u.id == current_id %}
+          <button type="submit" class="btn btn-outline btn-block" style="font-weight:700">
+            ✓ Continue as {{ u.name.split()[0] }}
+          </button>
+          {% else %}
+          <button type="submit" class="btn btn-primary btn-block" style="font-weight:700">
+            Login as {{ u.name.split()[0] }} →
+          </button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Interactive Demo Walkthrough Guide -->
+  <div class="card demo-guide-card" style="margin-top:36px">
+    <div class="card-header">
+      <div style="display:flex; align-items:center; gap:10px">
+        <span style="font-size:24px">💡</span>
+        <div>
+          <h3 style="margin:0; font-size:17px">How to Demonstrate Multi-User Scenarios</h3>
+          <span class="m">Best practices for presenting group dynamics, wallet deductions, and surplus claims</span>
+        </div>
+      </div>
+    </div>
+    <div class="demo-steps-grid">
+      <div class="demo-step">
+        <div class="demo-step-num">1</div>
+        <div class="demo-step-text">
+          <b>⚡ Group Buying Activation:</b><br>
+          Join a group deal with <b>Dhanush (C001)</b>. Next, switch to <b>Priya (C002)</b> and <b>Rahul (C003)</b> from the top-right navbar menu and join the same deal to watch the participant quota trigger instant activation!
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num">2</div>
+        <div class="demo-step-text">
+          <b>💰 Wallet & Automated Refunds:</b><br>
+          Each persona has their own pre-funded wallet and transaction ledger. Deductions and group deal refund guarantees are strictly calculated per customer.
+        </div>
+      </div>
+      <div class="demo-step">
+        <div class="demo-step-num">3</div>
+        <div class="demo-step-text">
+          <b>📅 Multi-Item Meal Plans:</b><br>
+          Schedule weekly lunches with <b>Ananya (C004)</b> or <b>Vikram (C005)</b>. The restaurant receives advance notifications and portions are automatically reserved.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

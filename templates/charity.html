@@ -32,36 +32,96 @@
 
 <div class="card" style="margin-top:20px">
   <div class="card-header">
-    <h3>Active Surplus Food Donations from Kitchens</h3>
-    <span class="m">Real-time donation broadcast from restaurant kitchens</span>
+    <div>
+      <h3>Active Surplus Food Donations from Kitchens</h3>
+      <span class="m">Real-time donation broadcast from partner restaurant kitchens. Verified NGOs can claim portions directly.</span>
+    </div>
+    <a href="http://127.0.0.1:5001/charity" target="_blank" class="btn btn-outline btn-xs">Open Dedicated Charity Board ↗</a>
   </div>
 
   {% if donations %}
   <div class="donations-grid">
     {% for d in donations %}
-    <div class="card donation-card {{ 'claimed-card' if d.status == 'ACCEPTED' else '' }}">
+    <div class="card donation-card {{ 'claimed-card' if d.status in ('CLAIMED', 'COLLECTED') else '' }}">
       <div class="card-header">
         <span class="restaurant-tag">🏪 {{ d.restaurant_name }}</span>
-        <span class="tag {{ 'ACCEPTED' if d.status == 'ACCEPTED' else ('ACCEPTED' if d.status == 'COLLECTED' else 'PENDING') }}">
-          {{ d.status }}
-        </span>
+        {% if d.status in ('AVAILABLE', 'COLLECTED') %}
+        <span class="tag ACCEPTED">{{ d.status|replace('_', ' ') }}</span>
+        {% elif d.status == 'PARTIALLY_CLAIMED' %}
+        <span class="tag PARTIALLY_ACCEPTED">PARTIALLY CLAIMED</span>
+        {% elif d.status == 'CLAIMED' %}
+        <span class="tag" style="background:#059669; color:#fff">ALL CLAIMED</span>
+        {% elif d.status == 'SCHEDULED' %}
+        <span class="tag PENDING">SCHEDULED</span>
+        {% elif d.status == 'EXPIRED' %}
+        <span class="tag REJECTED">EXPIRED</span>
+        {% else %}
+        <span class="tag">{{ d.status }}</span>
+        {% endif %}
       </div>
 
       <h3>🍲 {{ d.food_items }}</h3>
-      <p><b>Quantity Available:</b> {{ d.quantity_desc }}</p>
-      <p class="m"><b>Collection Deadline:</b> <span class="text-danger">{{ d.pickup_deadline }}</span></p>
+
+      <div class="stock-highlight" style="margin:10px 0; padding:8px 12px; background:#ecfdf5; border-radius:6px">
+        <b style="font-size:16px; color:#065f46">{{ d.available_qty }} portions available</b>
+        <span class="m" style="font-size:12px"> (Original batch: {{ d.total_qty }} portions)</span>
+      </div>
+
+      <p class="m"><b>Collection Deadline:</b> <span class="text-danger" style="font-weight:700">{{ d.pickup_deadline }}</span></p>
 
       <div class="safety-box">
         <b>Safety Instructions:</b> {{ d.safety_notes }}
       </div>
 
-      {% if d.status == 'AVAILABLE' %}
-      <div class="notice-box" style="margin-top:10px">
-        📢 <i>Are you a verified NGO or volunteer? Contact the restaurant or access the charity collection portal to reserve pickup.</i>
+      <!-- Multiple Charity Claims History -->
+      {% if d.claims %}
+      <div style="margin-top:12px; border-top:1px solid var(--border); padding-top:8px; background:#f8fafc; padding:10px 12px; border-radius:6px">
+        <span class="m" style="font-size:11.5px; font-weight:700; color:#334155">✓ Claimed Collections ({{ d.claims|length }} Charity Organization{{ 's' if d.claims|length > 1 else '' }}):</span>
+        {% for cl in d.claims %}
+        <div style="font-size:12px; color:#1e293b; margin-top:4px; padding:3px 0; border-bottom:1px dashed #e2e8f0">
+          • <b>{{ cl.charity_name }}</b> claimed <b>{{ cl.quantity_claimed }}</b> portion(s) <span class="m">(📞 {{ cl.charity_contact }})</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% elif d.charity_name %}
+      <div class="claimed-banner" style="margin-top:10px">
+        ✓ <b>Rescued by:</b> {{ d.charity_name }} <span class="m">(📞 {{ d.charity_contact }})</span>
+      </div>
+      {% endif %}
+
+      <!-- Claim Action Box for Charities -->
+      {% if d.status in ('AVAILABLE', 'PARTIALLY_CLAIMED') and d.available_qty > 0 %}
+      <div class="claim-action" id="cbox_{{ d.id }}" style="margin-top:12px">
+        <button class="btn btn-primary btn-block" onclick="showClaim('{{ d.id }}')">
+          🤝 Claim Portions as Charity (Max: {{ d.available_qty }})
+        </button>
+      </div>
+      <div class="claim-form-container" id="cform_{{ d.id }}" style="display:none; margin-top:12px; background:#f8fafc; padding:12px; border-radius:6px; border:1px solid var(--border)">
+        <div class="form-group" style="margin-bottom:8px">
+          <label style="font-size:12px; font-weight:600">Charity / NGO Name</label>
+          <input type="text" id="cname_{{ d.id }}" class="form-input" placeholder="e.g. Hope Relief Foundation">
+        </div>
+        <div class="form-group" style="margin-bottom:8px">
+          <label style="font-size:12px; font-weight:600">Coordinator Contact / Phone</label>
+          <input type="text" id="ccontact_{{ d.id }}" class="form-input" placeholder="e.g. +91 98765 43210">
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label style="font-size:12px; font-weight:600">Portions Required (Max: {{ d.available_qty }})</label>
+          <input type="number" id="cqty_{{ d.id }}" class="form-input" value="{{ d.available_qty }}" min="1" max="{{ d.available_qty }}">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="submitCharityClaim('{{ d.id }}')">Confirm Pickup Reservation</button>
+      </div>
+      {% elif d.status == 'COLLECTED' %}
+      <div class="claimed-banner" style="margin-top:10px; background:#f1f5f9; border-color:#cbd5e1; color:#334155">
+        ✓ All portions handed over and collected by charity teams.
+      </div>
+      {% elif d.status == 'EXPIRED' %}
+      <div class="claimed-banner" style="margin-top:10px; background:#fef2f2; border-color:#fecaca; color:#b91c1c">
+        ⚠️ Collection deadline passed.
       </div>
       {% else %}
       <div class="claimed-banner" style="margin-top:10px">
-        ✓ <b>Rescued by:</b> {{ d.charity_name }}
+        ✓ All available portions have been reserved by registered charities.
       </div>
       {% endif %}
     </div>
@@ -73,4 +133,39 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+function showClaim(id) {
+  document.getElementById('cbox_' + id).style.display = 'none';
+  document.getElementById('cform_' + id).style.display = 'block';
+}
+
+async function submitCharityClaim(id) {
+  const cname = document.getElementById('cname_' + id).value.trim();
+  const contact = document.getElementById('ccontact_' + id).value.trim();
+  const qty = parseInt(document.getElementById('cqty_' + id).value);
+
+  if (!cname || !contact || !qty || qty <= 0) {
+    alert('Please enter Charity Name, Contact Number, and valid quantity.');
+    return;
+  }
+
+  const resp = await fetch(`/api/donations/${id}/claim`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      charity_name: cname,
+      charity_contact: contact,
+      requested_qty: qty
+    })
+  });
+  const data = await resp.json();
+  if (data.success) {
+    alert(data.message);
+    location.reload();
+  } else {
+    alert(data.message);
+  }
+}
+</script>
 {% endblock %}

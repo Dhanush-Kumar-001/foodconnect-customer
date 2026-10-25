@@ -637,3 +637,332 @@ button:disabled { opacity: 0.5; cursor: default; }
   font-size: 13.5px;
 }
 
+/* ---------- Persona Switcher in Navbar ---------- */
+.persona-wrapper {
+  position: relative;
+}
+.persona-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s;
+}
+.persona-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.persona-avatar { font-size: 16px; }
+.persona-arrow { font-size: 10px; opacity: 0.8; }
+
+.persona-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 310px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-out;
+}
+.persona-dropdown-header {
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+}
+.persona-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+.persona-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s;
+}
+.persona-item:hover {
+  background: #f8fafc;
+}
+.persona-item.active-persona {
+  background: #ecfdf5;
+  border-left: 3px solid var(--a);
+}
+.persona-item-avatar {
+  font-size: 24px;
+  width: 36px;
+  height: 36px;
+  background: #f1f5f9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.persona-item-details { flex: 1; }
+.persona-item-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.current-badge {
+  background: var(--a);
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.persona-item-role {
+  font-size: 11px;
+  color: var(--m);
+  margin-top: 1px;
+}
+.persona-dropdown-footer {
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+.persona-footer-link {
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--a);
+}
+.persona-footer-link:hover { text-decoration: underline; }
+
+/* ---------- 5-Persona Login Showcase Page ---------- */
+.login-page-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.persona-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 20px;
+}
+.persona-showcase-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 2px solid var(--border);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  overflow: hidden;
+}
+.persona-showcase-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: #cbd5e1;
+}
+.active-persona-card {
+  border-color: var(--a);
+  background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+  box-shadow: 0 4px 14px 0 rgba(11, 122, 90, 0.15);
+}
+.persona-current-flag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  background: #059669;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(5, 150, 105, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+}
+
+.persona-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.persona-big-avatar {
+  font-size: 34px;
+  width: 60px;
+  height: 60px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+}
+.user-id-tag {
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.persona-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.persona-stat-box {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+.persona-wallet-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--a);
+  margin-top: 2px;
+}
+.persona-email {
+  font-size: 12px;
+  color: var(--m);
+  font-family: monospace;
+}
+.persona-card-footer {
+  margin-top: auto;
+}
+
+/* Demo Guide Card */
+.demo-guide-card {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+}
+.demo-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 16px 20px;
+}
+.demo-step {
+  display: flex;
+  gap: 12px;
+}
+.demo-step-num {
+  width: 28px;
+  height: 28px;
+  background: var(--a);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.demo-step-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #334155;
+}
+
+/* ---------- Charity & Surplus Food Display ---------- */
+.impact-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.impact-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.impact-box .ib-icon {
+  font-size: 28px;
+  background: #ecfdf5;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.donations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  padding: 18px 0;
+}
+.donation-card {
+  border-top: 4px solid #059669;
+  display: flex;
+  flex-direction: column;
+}
+.claimed-card {
+  opacity: 0.85;
+  border-top-color: #64748b;
+}
+.stock-highlight {
+  margin: 10px 0;
+  padding: 8px 12px;
+  background: #ecfdf5;
+  border-radius: 6px;
+}
+.safety-box {
+  background: #f8fafc;
+  border-left: 3px solid #059669;
+  padding: 8px 12px;
+  font-size: 12px;
+  margin: 12px 0;
+  border-radius: 0 4px 4px 0;
+}
+.claimed-banner {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: #065f46;
+}
+.restaurant-tag {
+  font-weight: 700;
+  font-size: 13px;
+  color: #334155;
+}
+
+
