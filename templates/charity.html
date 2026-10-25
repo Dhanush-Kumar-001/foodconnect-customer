@@ -1,0 +1,76 @@
+{% extends "base.html" %}{% block c %}
+<div class="page-header">
+  <div>
+    <h1>Surplus Food Charity Relief Network</h1>
+    <p class="subtitle">Supporting zero-hunger initiatives. Partner restaurants donate unsold, hygienic meals to registered food rescue organizations.</p>
+  </div>
+</div>
+
+<div class="impact-metrics-row">
+  <div class="impact-box">
+    <div class="ib-icon">🍲</div>
+    <div>
+      <b>Over 120+ Meals Donated</b>
+      <p class="m">Directly rescued from partner kitchens this month</p>
+    </div>
+  </div>
+  <div class="impact-box">
+    <div class="ib-icon">🌱</div>
+    <div>
+      <b>Zero Food Wastage Mission</b>
+      <p class="m">Connecting restaurants with local orphanages and shelters</p>
+    </div>
+  </div>
+  <div class="impact-box">
+    <div class="ib-icon">⏰</div>
+    <div>
+      <b>Strict Food Safety Windows</b>
+      <p class="m">All surplus food is monitored with 2-4 hr pickup deadlines</p>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:20px">
+  <div class="card-header">
+    <h3>Active Surplus Food Donations from Kitchens</h3>
+    <span class="m">Real-time donation broadcast from restaurant kitchens</span>
+  </div>
+
+  {% if donations %}
+  <div class="donations-grid">
+    {% for d in donations %}
+    <div class="card donation-card {{ 'claimed-card' if d.status == 'ACCEPTED' else '' }}">
+      <div class="card-header">
+        <span class="restaurant-tag">🏪 {{ d.restaurant_name }}</span>
+        <span class="tag {{ 'ACCEPTED' if d.status == 'ACCEPTED' else ('ACCEPTED' if d.status == 'COLLECTED' else 'PENDING') }}">
+          {{ d.status }}
+        </span>
+      </div>
+
+      <h3>🍲 {{ d.food_items }}</h3>
+      <p><b>Quantity Available:</b> {{ d.quantity_desc }}</p>
+      <p class="m"><b>Collection Deadline:</b> <span class="text-danger">{{ d.pickup_deadline }}</span></p>
+
+      <div class="safety-box">
+        <b>Safety Instructions:</b> {{ d.safety_notes }}
+      </div>
+
+      {% if d.status == 'AVAILABLE' %}
+      <div class="notice-box" style="margin-top:10px">
+        📢 <i>Are you a verified NGO or volunteer? Contact the restaurant or access the charity collection portal to reserve pickup.</i>
+      </div>
+      {% else %}
+      <div class="claimed-banner" style="margin-top:10px">
+        ✓ <b>Rescued by:</b> {{ d.charity_name }}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p class="m">No active surplus food donations at this moment. Restaurants post surplus meals during shift wrap-ups.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

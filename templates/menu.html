@@ -1,17 +1,220 @@
 {% extends "base.html" %}{% block c %}
-<h1>{{ r.name }}</h1>
-<div class="grid">
-{% for n, v in r["menu"].items() %}
-<div class="card"><h3>{{ n }}</h3><div class="m">{{ v[1] }}</div><h3>₹{{ v[0] }}</h3>
-<div class="qty" data-n="{{ n }}" data-p="{{ v[0] }}"><button onclick="chg(this,-1)">−</button><b>0</b><button onclick="chg(this,1)">+</button></div></div>
-{% endfor %}</div>
-<div class="card" id="cart"><h2>Your cart</h2><div id="lines" class="m">Add items to start an order.</div>
-<h3 id="tot"></h3><button id="go" onclick="place()" disabled>Place order</button></div>
+<div class="page-header">
+  <div>
+    <a href="/" class="btn btn-xs" style="margin-bottom:8px">← Back to Restaurants</a>
+    <h1>{{ r.name }}</h1>
+    <p class="subtitle">Live kitchen inventory synced. Order now or schedule meals ahead.</p>
+  </div>
+</div>
+
+<div class="menu-layout">
+  <!-- Menu Items List -->
+  <div class="menu-items-col">
+    <div class="grid">
+      {% for n, v in r["menu"].items() %}
+      {% set stock_info = inventory.get(n, {'available_qty': 20, 'is_sold_out': False, 'is_low_stock': False}) %}
+      <div class="card dish-card {{ 'sold-out-card' if stock_info.is_sold_out else '' }}">
+        <div class="dish-header">
+          <h3>{{ n }}</h3>
+          <span class="dish-price">₹{{ v[0] }}</span>
+        </div>
+        <div class="m" style="margin-bottom:12px">{{ v[1] }}</div>
+
+        <!-- Inventory Badge -->
+        <div class="stock-indicator">
+          {% if stock_info.is_sold_out %}
+          <span class="stock-pill sold-out">❌ Sold Out in Kitchen</span>
+          {% elif stock_info.is_low_stock %}
+          <span class="stock-pill low-stock">⚠️ Only {{ stock_info.available_qty }} portions left!</span>
+          {% else %}
+          <span class="stock-pill" style="background:#e0f2fe; color:#0369a1">📦 {{ stock_info.available_qty }} available</span>
+          {% endif %}
+        </div>
+
+        <div class="qty-control" data-n="{{ n }}" data-p="{{ v[0] }}" data-max="{{ stock_info.available_qty }}">
+          {% if not stock_info.is_sold_out %}
+          <button class="qty-btn" onclick="chg(this,-1)">−</button>
+          <b class="qty-num">0</b>
+          <button class="qty-btn" onclick="chg(this,1)">+</button>
+          {% else %}
+          <span class="text-danger" style="font-weight:600; font-size:12px">Temporarily Unavailable</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Cart & Scheduling Sidebar -->
+  <div class="cart-sidebar-col">
+    <div class="card checkout-card" id="cart">
+      <h2>Your Cart</h2>
+
+      <!-- Order Mode Toggle -->
+      <div class="order-mode-toggle">
+        <label class="mode-label">
+          <input type="radio" name="order_mode" value="NOW" checked onchange="toggleMode()"> 🚀 Order Now
+        </label>
+        <label class="mode-label">
+          <input type="radio" name="order_mode" value="SCHEDULE" onchange="toggleMode()"> 📅 Schedule / Plan
+        </label>
+      </div>
+
+      <!-- Schedule Options (Hidden by default) -->
+      <div id="schedule_fields" style="display:none; margin:14px 0; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid var(--border)">
+        <div class="form-group" style="margin-bottom:8px">
+          <label style="font-size:12px; font-weight:600">Meal Category</label>
+          <select id="sched_meal_type" class="form-input">
+            <option value="BREAKFAST">🌅 Breakfast (8:30 AM)</option>
+            <option value="LUNCH" selected>☀️ Lunch (12:30 PM)</option>
+            <option value="DINNER">🌙 Dinner (8:00 PM)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:8px">
+          <label style="font-size:12px; font-weight:600">Scheduled Date</label>
+          <input type="date" id="sched_date" class="form-input">
+        </div>
+        <div class="form-group">
+          <label style="font-size:12px; font-weight:600">Scheduled Time</label>
+          <input type="time" id="sched_time" class="form-input" value="12:30">
+        </div>
+        <p class="m" style="margin-top:6px; font-size:11.5px">⚡ Amount will be auto-debited from your in-built wallet on the scheduled date!</p>
+      </div>
+
+      <!-- Cart Itemized Lines -->
+      <div id="lines" class="cart-lines">Select quantities to start your order.</div>
+
+      <!-- Payment Method -->
+      <div id="payment_picker" style="margin-top:14px; border-top:1px solid var(--border); padding-top:10px">
+        <label style="font-size:12.5px; font-weight:600; display:block; margin-bottom:6px">Payment Option</label>
+        <label style="display:block; font-size:13px; margin-bottom:4px">
+          <input type="radio" name="pay_opt" value="WALLET" checked>
+          💳 In-Built Wallet (Balance: ₹{{ wallet.balance|int }})
+        </label>
+        <label id="cod_label" style="display:block; font-size:13px">
+          <input type="radio" name="pay_opt" value="COD">
+          💵 Cash on Delivery (COD)
+        </label>
+      </div>
+
+      <div class="cart-summary" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px">
+        <h3 id="tot" style="margin:0 0 12px 0">Total: ₹0</h3>
+        <button id="go" class="btn btn-primary btn-block" onclick="placeOrder()" disabled>Place Order Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-function chg(b,d){const e=b.parentNode.querySelector('b');e.textContent=Math.max(0,+e.textContent+d);draw()}
-function draw(){let t=0,h='';document.querySelectorAll('.qty').forEach(q=>{const n=+q.querySelector('b').textContent;if(n){t+=n*q.dataset.p;h+=`<div>${esc(q.dataset.n)} × ${n} — ₹${n*q.dataset.p}</div>`}});
-document.getElementById('lines').innerHTML=h||'Add items to start an order.';document.getElementById('tot').textContent=t?'Total ₹'+t:'';document.getElementById('go').disabled=!t}
-async function place(){const items=[...document.querySelectorAll('.qty')].map(q=>({item:q.dataset.n,quantity:+q.querySelector('b').textContent}));
-const r=await fetch('/api/orders/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({restaurant_id:'{{ rid }}',items})});
-const d=await r.json();d.success?location='/orders/'+d.order_id:alert(d.message)}
-</script>{% endblock %}
+// Set default date for schedule to tomorrow
+const tom = new Date();
+tom.setDate(tom.getDate() + 1);
+document.getElementById('sched_date').value = tom.toISOString().split('T')[0];
+
+function toggleMode() {
+  const isSched = document.querySelector('input[name="order_mode"]:checked').value === 'SCHEDULE';
+  document.getElementById('schedule_fields').style.display = isSched ? 'block' : 'none';
+  document.getElementById('cod_label').style.display = isSched ? 'none' : 'block';
+  if (isSched) {
+    document.querySelector('input[name="pay_opt"][value="WALLET"]').checked = true;
+    document.getElementById('go').textContent = 'Confirm Scheduled Meal Plan';
+  } else {
+    document.getElementById('go').textContent = 'Place Order Now';
+  }
+}
+
+function chg(btn, delta) {
+  const container = btn.parentNode;
+  const numElem = container.querySelector('.qty-num');
+  const max = parseInt(container.dataset.max) || 99;
+  let current = parseInt(numElem.textContent);
+  let next = Math.max(0, current + delta);
+  if (next > max) {
+    alert(`Only ${max} portions currently available in kitchen.`);
+    return;
+  }
+  numElem.textContent = next;
+  drawCart();
+}
+
+function drawCart() {
+  let total = 0;
+  let html = '';
+  document.querySelectorAll('.qty-control').forEach(q => {
+    const num = parseInt(q.querySelector('.qty-num')?.textContent || '0');
+    if (num > 0) {
+      const price = parseFloat(q.dataset.p);
+      const subtotal = num * price;
+      total += subtotal;
+      html += `<div class="cart-line-item"><span>${esc(q.dataset.n)} × ${num}</span><b>₹${subtotal}</b></div>`;
+    }
+  });
+
+  document.getElementById('lines').innerHTML = html || '<span class="m">Add items to start an order.</span>';
+  document.getElementById('tot').textContent = total ? `Total: ₹${total}` : 'Total: ₹0';
+  document.getElementById('go').disabled = total === 0;
+}
+
+async function placeOrder() {
+  const isSched = document.querySelector('input[name="order_mode"]:checked').value === 'SCHEDULE';
+  const payOpt = document.querySelector('input[name="pay_opt"]:checked').value;
+  const items = [];
+  document.querySelectorAll('.qty-control').forEach(q => {
+    const qty = parseInt(q.querySelector('.qty-num')?.textContent || '0');
+    if (qty > 0) {
+      items.push({ item: q.dataset.n, quantity: qty });
+    }
+  });
+
+  if (items.length === 0) return;
+
+  if (isSched) {
+    // Schedule Order API
+    const dateVal = document.getElementById('sched_date').value;
+    const timeVal = document.getElementById('sched_time').value;
+    const mealVal = document.getElementById('sched_meal_type').value;
+
+    if (!dateVal) {
+      alert('Please pick a date for the scheduled meal.');
+      return;
+    }
+
+    const r = await fetch('/api/scheduled/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        restaurant_id: '{{ rid }}',
+        meal_type: mealVal,
+        scheduled_date: dateVal,
+        scheduled_time: timeVal,
+        items: items
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      alert(d.message);
+      location.href = '/planner';
+    } else {
+      alert(d.message);
+    }
+  } else {
+    // Instant Order API
+    const r = await fetch('/api/orders/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        restaurant_id: '{{ rid }}',
+        payment_method: payOpt,
+        items: items
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      location = '/orders/' + d.order_id;
+    } else {
+      alert(d.message);
+    }
+  }
+}
+</script>
+{% endblock %}

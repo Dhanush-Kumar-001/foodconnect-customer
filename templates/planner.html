@@ -1,0 +1,347 @@
+{% extends "base.html" %}{% block c %}
+<div class="page-header">
+  <div>
+    <h1>Scheduled Food Ordering & Meal Planner</h1>
+    <p class="subtitle">Plan meals for the week or month ahead. Select multiple items with custom quantities, reserve kitchen portions in advance, and enjoy automatic wallet billing.</p>
+  </div>
+  <div>
+    <button class="btn btn-outline" onclick="triggerAutoRun()">⚡ Check & Run Due Orders Now</button>
+  </div>
+</div>
+
+<!-- Weekly Days Ribbon -->
+<div class="card week-ribbon">
+  <div class="card-header">
+    <h3>Quick Meal Planning for the Week</h3>
+    <span class="m">Click any day to schedule for that upcoming date</span>
+  </div>
+  <div class="days-grid">
+    {% for day_name, d_offset in [('Monday', 1), ('Tuesday', 2), ('Wednesday', 3), ('Thursday', 4), ('Friday', 5), ('Saturday', 6), ('Sunday', 7)] %}
+    <div class="day-box">
+      <div class="day-name">{{ day_name }}</div>
+      <div class="day-actions">
+        <button class="btn btn-xs btn-primary" onclick="pickDayOffset({{ d_offset }})">+ Plan {{ day_name[:3] }}</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Interactive Multi-Item Meal Scheduler -->
+<div class="card" id="scheduler_form" style="margin-top:20px; border-left:4px solid var(--a)">
+  <div class="card-header">
+    <div>
+      <h3>🍽️ Schedule a Meal Plan (Select Multiple Items & Quantities)</h3>
+      <span class="m">Selected dishes are reserved in the restaurant's inventory to guarantee fresh availability.</span>
+    </div>
+    <span class="wallet-badge" style="padding:4px 10px; font-size:12px">
+      Wallet Balance: <b>₹{{ wallet.balance|int }}</b>
+    </span>
+  </div>
+
+  <div class="form-row" style="margin-top:10px">
+    <!-- 1. Restaurant Picker -->
+    <div class="form-group" style="flex:1.2">
+      <label><b>1. Select Restaurant</b></label>
+      <select id="plan_rid" class="form-input" onchange="onRestaurantChange()">
+        {% for rid, r in restaurants.items() %}
+        <option value="{{ rid }}">{{ r.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- 2. Meal Category -->
+    <div class="form-group" style="flex:1">
+      <label><b>2. Meal Category</b></label>
+      <select id="plan_meal_type" class="form-input" onchange="onMealTypeChange()">
+        <option value="BREAKFAST">🌅 Breakfast (08:30 AM)</option>
+        <option value="LUNCH" selected>☀️ Lunch (12:30 PM)</option>
+        <option value="DINNER">🌙 Dinner (20:00 PM)</option>
+      </select>
+    </div>
+
+    <!-- 3. Scheduled Date -->
+    <div class="form-group" style="flex:1">
+      <label><b>3. Scheduled Date</b></label>
+      <input type="date" id="plan_date" class="form-input">
+    </div>
+
+    <!-- 4. Scheduled Time -->
+    <div class="form-group" style="flex:0.8">
+      <label><b>4. Scheduled Time</b></label>
+      <input type="time" id="plan_time" class="form-input" value="12:30">
+    </div>
+  </div>
+
+  <!-- Multi-Item Menu Selection Container -->
+  <div class="multi-item-card">
+    <div class="multi-item-header">
+      <span>Food Items & Menu Portions</span>
+      <span class="m" style="font-weight:normal; font-size:12px">Check items and set desired portions for your meal</span>
+    </div>
+
+    <div id="multi_item_list">
+      <!-- Injected via JavaScript based on restaurant menu -->
+    </div>
+
+    <!-- Multi-Item Summary & Action Bar -->
+    <div class="multi-item-summary-bar">
+      <div>
+        <span id="summary_item_count" style="font-weight:600; color:var(--t)">0 items selected</span>
+        <span class="m" style="margin-left:8px">(Estimated Total: <b id="summary_total_price" style="font-size:16px; color:var(--a)">₹0</b>)</span>
+      </div>
+      <button class="btn btn-primary" onclick="scheduleMeal()">
+        + Schedule Meal Plan & Reserve in Kitchen
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Scheduled Orders Table -->
+<div class="card" style="margin-top:20px">
+  <div class="card-header">
+    <h3>Upcoming & Past Scheduled Meals</h3>
+    <span class="m">Reserved with restaurant kitchen • Auto-debited from wallet on scheduled date</span>
+  </div>
+
+  {% if scheduled %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Schedule ID</th>
+        <th>Date & Time</th>
+        <th>Category</th>
+        <th>Restaurant & Selected Items</th>
+        <th>Total Amount</th>
+        <th>Kitchen Reservation Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in scheduled %}
+      <tr>
+        <td><b>{{ s.id }}</b></td>
+        <td>
+          <b>{{ s.scheduled_date }}</b><br>
+          <span class="m">⏰ {{ s.scheduled_time }}</span>
+        </td>
+        <td>
+          <span class="meal-tag {{ s.meal_type|lower }}">{{ s.meal_type }}</span>
+        </td>
+        <td>
+          <b>{{ s.rname }}</b>
+          <div style="font-size:12.5px; color:#334155; margin-top:3px">
+            {% for it in s['items'] %}
+            <div>• <b>{{ it.item }}</b> × {{ it.quantity }}{% if it.unit_price is defined and it.unit_price is not none %} (₹{{ (it.quantity * it.unit_price)|int }}){% endif %}</div>
+            {% endfor %}
+          </div>
+        </td>
+        <td><b>₹{{ s.total_amount|int }}</b></td>
+        <td>
+          {% if s.status == 'SCHEDULED' %}
+          <span class="tag ACCEPTED">Portions Reserved</span>
+          <div class="m" style="font-size:11px; margin-top:2px">Kitchen notified for {{ s.scheduled_date }}</div>
+          {% elif s.status == 'REJECTED_BY_RESTAURANT' %}
+          <span class="tag REJECTED">⚠️ Kitchen Unable to Prepare</span>
+          <div class="m" style="font-size:11.5px; margin-top:2px; color:var(--r)"><b>Advance Notice:</b> {{ s.failure_reason }}</div>
+          {% elif s.status == 'EXECUTED' %}
+          <span class="tag ACCEPTED">✓ Executed & Ordered</span>
+          {% elif s.status == 'CANCELLED' %}
+          <span class="tag" style="background:#e2e8f0; color:#475569">Cancelled by You</span>
+          {% else %}
+          <span class="tag REJECTED">Failed ({{ s.failure_reason }})</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if s.status == 'SCHEDULED' %}
+          <button class="btn btn-xs btn-danger" onclick="cancelSched('{{ s.id }}')">Cancel</button>
+          {% elif s.status == 'EXECUTED' and s.created_order_id %}
+          <a class="btn btn-xs btn-primary" href="/orders/{{ s.created_order_id }}">View Order CSV</a>
+          {% else %}
+          <span class="m">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <p>No meals scheduled yet. Select a restaurant and dishes above to plan your upcoming meals!</p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+const RESTAURANT_DATA = {{ restaurants_json|safe }};
+
+// Set default date to tomorrow
+const tmr = new Date();
+tmr.setDate(tmr.getDate() + 1);
+const pad = n => String(n).padStart(2, '0');
+document.getElementById('plan_date').value = `${tmr.getFullYear()}-${pad(tmr.getMonth()+1)}-${pad(tmr.getDate())}`;
+
+function onRestaurantChange() {
+  const rid = document.getElementById('plan_rid').value;
+  const list = document.getElementById('multi_item_list');
+  list.innerHTML = '';
+
+  const menu = RESTAURANT_DATA[rid]?.menu || {};
+  let idx = 0;
+  for (const [dishName, details] of Object.entries(menu)) {
+    const price = details[0];
+    const desc = details[1] || '';
+    const isFirst = (idx === 0);
+
+    const row = document.createElement('div');
+    row.className = 'multi-item-row';
+    row.innerHTML = `
+      <div class="multi-item-info">
+        <input type="checkbox" class="multi-item-checkbox" id="chk_${idx}" data-dish="${dishName}" data-price="${price}" ${isFirst ? 'checked' : ''} onchange="updateSummary()">
+        <div>
+          <label for="chk_${idx}" class="multi-item-title" style="cursor:pointer">${dishName}</label>
+          <div class="multi-item-desc">${desc} • ₹${price} per portion</div>
+        </div>
+      </div>
+      <div class="multi-item-controls">
+        <div class="qty-stepper">
+          <button class="stepper-btn" type="button" onclick="changeQty(${idx}, -1)">−</button>
+          <input type="number" id="qty_${idx}" class="stepper-input" value="1" min="1" max="20" onchange="updateSummary()">
+          <button class="stepper-btn" type="button" onclick="changeQty(${idx}, 1)">+</button>
+        </div>
+        <div class="multi-item-subtotal" id="sub_${idx}">₹${price}</div>
+      </div>
+    `;
+    list.appendChild(row);
+    idx++;
+  }
+  updateSummary();
+}
+
+function changeQty(idx, delta) {
+  const input = document.getElementById(`qty_${idx}`);
+  const chk = document.getElementById(`chk_${idx}`);
+  let val = (parseInt(input.value) || 1) + delta;
+  if (val < 1) val = 1;
+  if (val > 20) val = 20;
+  input.value = val;
+  if (delta > 0 && !chk.checked) chk.checked = true;
+  updateSummary();
+}
+
+function updateSummary() {
+  const rid = document.getElementById('plan_rid').value;
+  const menu = RESTAURANT_DATA[rid]?.menu || {};
+  const keys = Object.keys(menu);
+
+  let totalCount = 0;
+  let totalCost = 0;
+
+  keys.forEach((dishName, idx) => {
+    const chk = document.getElementById(`chk_${idx}`);
+    const input = document.getElementById(`qty_${idx}`);
+    const sub = document.getElementById(`sub_${idx}`);
+    const price = menu[dishName][0];
+    const qty = parseInt(input?.value) || 1;
+
+    if (sub) sub.textContent = `₹${price * qty}`;
+
+    if (chk && chk.checked) {
+      totalCount += qty;
+      totalCost += (price * qty);
+    }
+  });
+
+  document.getElementById('summary_item_count').textContent = `${totalCount} portion(s) selected`;
+  document.getElementById('summary_total_price').textContent = `₹${totalCost}`;
+}
+
+function onMealTypeChange() {
+  const meal = document.getElementById('plan_meal_type').value;
+  const timeInput = document.getElementById('plan_time');
+  if (meal === 'BREAKFAST') timeInput.value = '08:30';
+  else if (meal === 'LUNCH') timeInput.value = '12:30';
+  else if (meal === 'DINNER') timeInput.value = '20:00';
+}
+
+function pickDayOffset(dayOffset) {
+  const d = new Date();
+  const currentDay = d.getDay() || 7;
+  let diff = dayOffset - currentDay;
+  if (diff <= 0) diff += 7;
+  d.setDate(d.getDate() + diff);
+  document.getElementById('plan_date').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  document.getElementById('scheduler_form').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function scheduleMeal() {
+  const rid = document.getElementById('plan_rid').value;
+  const mealType = document.getElementById('plan_meal_type').value;
+  const dateVal = document.getElementById('plan_date').value;
+  const timeVal = document.getElementById('plan_time').value;
+
+  const menu = RESTAURANT_DATA[rid]?.menu || {};
+  const keys = Object.keys(menu);
+  const selectedItems = [];
+
+  keys.forEach((dishName, idx) => {
+    const chk = document.getElementById(`chk_${idx}`);
+    const input = document.getElementById(`qty_${idx}`);
+    if (chk && chk.checked) {
+      const qty = parseInt(input?.value) || 1;
+      selectedItems.push({ item: dishName, quantity: qty });
+    }
+  });
+
+  if (selectedItems.length === 0) {
+    alert('Please select at least one food item for your scheduled meal.');
+    return;
+  }
+  if (!dateVal || !timeVal) {
+    alert('Please specify the scheduled date and time.');
+    return;
+  }
+
+  const resp = await fetch('/api/scheduled/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      restaurant_id: rid,
+      meal_type: mealType,
+      scheduled_date: dateVal,
+      scheduled_time: timeVal,
+      items: selectedItems
+    })
+  });
+  const data = await resp.json();
+  if (data.success) {
+    alert(data.message);
+    location.reload();
+  } else {
+    alert(data.message);
+  }
+}
+
+async function cancelSched(id) {
+  if (!confirm('Are you sure you want to cancel this scheduled meal?')) return;
+  const resp = await fetch(`/api/scheduled/${id}/cancel`, { method: 'POST' });
+  const data = await resp.json();
+  if (data.success) {
+    location.reload();
+  } else {
+    alert(data.message);
+  }
+}
+
+async function triggerAutoRun() {
+  const resp = await fetch('/api/scheduled/run-due', { method: 'POST' });
+  const data = await resp.json();
+  alert(data.message);
+  location.reload();
+}
+
+// Initialize multi-item list
+onRestaurantChange();
+</script>
+{% endblock %}
+

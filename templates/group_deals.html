@@ -1,0 +1,104 @@
+{% extends "base.html" %}{% block c %}
+<div class="page-header">
+  <div>
+    <h1>Group Buying & Flash Deals</h1>
+    <p class="subtitle">Join forces with other food lovers! Unlock exclusive bulk discounts as soon as the participant quota is met.</p>
+  </div>
+  <div class="wallet-badge">
+    <span>Wallet Balance: <b>₹{{ wallet.balance|int }}</b></span>
+  </div>
+</div>
+
+<div class="offers-grid">
+  {% for o in offers %}
+  {% set discount = (100 - (o.group_price / o.original_price * 100))|int %}
+  <div class="card deal-card {{ 'deal-success' if o.status == 'SUCCESS' else '' }}">
+    <div class="deal-header">
+      <span class="restaurant-tag">🏪 {{ o.restaurant_name }}</span>
+      <span class="discount-badge">{{ discount }}% OFF</span>
+    </div>
+
+    <h2 class="deal-dish">🍛 {{ o.item_name }}</h2>
+
+    <div class="pricing-row">
+      <span class="original-price">₹{{ o.original_price|int }}</span>
+      <span class="deal-price">₹{{ o.group_price|int }}</span>
+      <span class="price-note">per person</span>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="deal-progress-section">
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" style="width: {{ o.progress_percent }}%"></div>
+      </div>
+      <div class="progress-labels">
+        <span><b>{{ o.current_participants }}</b> of {{ o.min_participants }} joined</span>
+        <span><b>{{ o.progress_percent }}%</b> filled</span>
+      </div>
+    </div>
+
+    <div class="deal-meta">
+      <div>⏰ <b>Deadline:</b> {{ o.deadline }}</div>
+      <div>🛡️ <b>Guarantee:</b> 100% Wallet Refund if target not met.</div>
+    </div>
+
+    <div class="deal-action-box" style="margin-top:16px">
+      {% if my_parts and o.id in my_parts %}
+        {% set p = my_parts[o.id] %}
+        {% if p.status == 'REFUNDED' %}
+        <div style="background:#fee2e2; border:1px solid #ef4444; color:#991b1b; padding:10px 12px; border-radius:6px; font-size:12.5px; font-weight:600; text-align:center">
+          💰 Deal Expired: ₹{{ p.amount_paid|int }} automatically refunded to your wallet.
+        </div>
+        {% elif p.status == 'ACTIVATED' %}
+        <div style="background:#ecfdf5; border:1px solid #10b981; color:#065f46; padding:10px 12px; border-radius:6px; font-size:12.5px; font-weight:600; text-align:center">
+          🎉 Deal Activated! Your discount at ₹{{ p.amount_paid|int }} is confirmed.
+        </div>
+        {% else %}
+        <div style="background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; padding:10px 12px; border-radius:6px; font-size:12.5px; font-weight:600; text-align:center">
+          ✓ You have joined! (₹{{ p.amount_paid|int }} paid from wallet)
+        </div>
+        {% endif %}
+      {% else %}
+        {% if o.status == 'ACTIVE' %}
+        <button class="btn btn-primary btn-block" onclick="joinDeal('{{ o.id }}', {{ o.group_price|int }})">
+          Join Group Deal (Pay ₹{{ o.group_price|int }})
+        </button>
+        {% elif o.status == 'SUCCESS' %}
+        <div class="success-banner">
+          🎉 <b>Goal Reached!</b> Deal activated for all participants at ₹{{ o.group_price|int }}.
+        </div>
+        {% else %}
+        <div class="expired-banner">
+          Offer Expired. All participants have been refunded to their wallet.
+        </div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card empty-state" style="grid-column: 1 / -1">
+    <h3>No Active Group Deals Right Now</h3>
+    <p class="m">Check back soon! Partner restaurants regularly launch flash bulk deals during lunch and dinner hours.</p>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+async function joinDeal(offerId, price) {
+  if (!confirm(`Join this group deal? ₹${price} will be debited from your wallet.`)) return;
+
+  const resp = await fetch(`/api/group-deals/${offerId}/join`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({})
+  });
+  const data = await resp.json();
+  if (data.success) {
+    alert(data.message);
+    location.reload();
+  } else {
+    alert(data.message);
+  }
+}
+</script>
+{% endblock %}

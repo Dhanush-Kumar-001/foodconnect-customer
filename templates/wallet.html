@@ -1,0 +1,114 @@
+{% extends "base.html" %}{% block c %}
+<div class="page-header">
+  <div>
+    <h1>In-Built Customer Wallet</h1>
+    <p class="subtitle">Secure digital wallet for instant food checkouts, automated scheduled meal billing, and group buying reservations.</p>
+  </div>
+</div>
+
+<div class="grid-2col">
+  <!-- Balance & Top Up Card -->
+  <div class="card wallet-card">
+    <div class="wallet-balance-box">
+      <span class="wallet-sub">Available Balance</span>
+      <div class="wallet-big-number">₹{{ wallet.balance|int }}</div>
+      <span class="m">Account ID: {{ wallet.customer_id }}</span>
+    </div>
+
+    <div class="topup-section" style="margin-top:20px">
+      <h3>Add Money to Wallet</h3>
+      <p class="m" style="margin-bottom:12px">Select an amount or enter custom credits:</p>
+
+      <div class="quick-topup-btns">
+        <button class="btn btn-outline" onclick="setTopup(100)">+ ₹100</button>
+        <button class="btn btn-outline" onclick="setTopup(300)">+ ₹300</button>
+        <button class="btn btn-outline" onclick="setTopup(500)">+ ₹500</button>
+        <button class="btn btn-outline" onclick="setTopup(1000)">+ ₹1,000</button>
+      </div>
+
+      <div class="form-row" style="margin-top:14px">
+        <div class="form-group">
+          <input type="number" id="topup_amt" class="form-input" placeholder="Enter amount in ₹" value="500" min="10">
+        </div>
+        <div class="form-group" style="flex:0">
+          <button class="btn btn-primary" onclick="submitTopup()">Top Up Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wallet Benefits Info -->
+  <div class="card info-card">
+    <h3>Why Use FoodConnect Wallet?</h3>
+    <ul class="feature-bullets">
+      <li><b>Zero Payment Failures:</b> Instant 1-click checkout without waiting for bank OTP delays.</li>
+      <li><b>Automated Meal Planning:</b> Scheduled breakfast, lunch, and dinner orders are seamlessly debited on time.</li>
+      <li><b>Instant Refunds:</b> If a restaurant rejects an item or a group buying deal fails, refunds credit immediately back to your wallet.</li>
+      <li><b>Flash Deal Locking:</b> Lock group discounts before public quotas fill up.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Transaction History -->
+<div class="card" style="margin-top:20px">
+  <h3>Recent Wallet Activity & Statement</h3>
+  {% if transactions %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Date & Time</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in transactions %}
+      <tr>
+        <td>{{ t.created_at }}</td>
+        <td>
+          <span class="tag {{ 'ACCEPTED' if t.type == 'CREDIT' else 'REJECTED' }}">
+            {{ t.type }}
+          </span>
+        </td>
+        <td><b>{{ t.description }}</b></td>
+        <td style="font-size:14px; font-weight:700" class="{{ 'text-success' if t.type == 'CREDIT' else 'text-danger' }}">
+          {{ '+' if t.type == 'CREDIT' else '-' }} ₹{{ t.amount|int }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <p class="m">No transactions recorded yet.</p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function setTopup(val) {
+  document.getElementById('topup_amt').value = val;
+}
+
+async function submitTopup() {
+  const amt = parseFloat(document.getElementById('topup_amt').value);
+  if (!amt || amt <= 0) {
+    alert('Please enter a valid amount.');
+    return;
+  }
+  const resp = await fetch('/api/wallet/topup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount: amt })
+  });
+  const data = await resp.json();
+  if (data.success) {
+    alert(data.message);
+    location.reload();
+  } else {
+    alert(data.message);
+  }
+}
+</script>
+{% endblock %}
