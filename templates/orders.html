@@ -1,6 +1,55 @@
 {% extends "base.html" %}{% block c %}
-<h1>My orders</h1>
-<div class="card">{% if orders %}<table><tr><th>Order</th><th>Restaurant</th><th>Placed</th><th>Status</th></tr>
-{% for o in orders %}<tr><td><a href="/orders/{{ o.order_id }}">{{ o.order_id }}</a></td><td>{{ R[o.restaurant_id].name }}</td><td>{{ o.created_at }}</td>
-<td><span class="tag {{ o.status|replace(' ','_') }}">{{ o.status }}</span></td></tr>{% endfor %}</table>
-{% else %}<span class="m">No orders yet. Pick a restaurant to place one.</span>{% endif %}</div>{% endblock %}
+<div class="page-header">
+  <div>
+    <h1>My Orders & Delivery Tracking</h1>
+    <p class="subtitle">Track live kitchen fulfillment status, review items, and download transmission CSV receipts.</p>
+  </div>
+</div>
+
+<div class="card">
+  {% if orders %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Order ID</th>
+        <th>Restaurant</th>
+        <th>Placed On</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      {% set r_info = R[o.restaurant_id] if o.restaurant_id in R else {'name': o.restaurant_id} %}
+      <tr>
+        <td>
+          <a href="/orders/{{ o.order_id }}" style="font-weight:800; color:var(--primary); text-decoration:none">
+            {{ o.order_id }}
+          </a>
+        </td>
+        <td>
+          <b>{{ r_info.name }}</b>
+        </td>
+        <td>{{ o.created_at }}</td>
+        <td>
+          <span class="tag {{ o.status|replace(' ','_') }}">{{ o.status }}</span>
+        </td>
+        <td>
+          <a href="/orders/{{ o.order_id }}" class="btn btn-xs btn-outline">
+            Track Order & Receipt →
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state" style="padding:40px; text-align:center">
+    <div style="font-size:36px; margin-bottom:10px">🛍️</div>
+    <h3 style="margin-bottom:6px">No orders placed yet</h3>
+    <p class="m" style="margin-bottom:18px">Explore our partner kitchens to place an order or schedule a meal plan.</p>
+    <a href="/" class="btn btn-primary">Browse Restaurants →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

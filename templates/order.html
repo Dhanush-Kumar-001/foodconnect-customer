@@ -1,24 +1,133 @@
 {% extends "base.html" %}{% block c %}
 {% set s = o.stage %}
-<h1>Order {{ o.order_id }} <span class="tag {{ o.status|replace(' ','_') }}">{{ o.status }}</span></h1>
-<div class="m">{{ r.name }}</div>
-<div class="card"><div class="steps">
-{% for label, done in [("Order created",1),("CSV generated",1),("Sent to restaurant",s!='CREATED'),("Restaurant received",s!='CREATED'),("Restaurant processed",s=='RESULT'),("Result received",s=='RESULT')] %}
-{% if done %}<div class="done">✓ {{ label }}</div>{% elif s=='SENT' and loop.index==5 %}<div class="now">● Restaurant processing…</div>{% else %}<div class="todo">○ {{ label }}</div>{% endif %}
-{% endfor %}</div>
-{% if s=='CREATED' %}<p><button id="send" onclick="send()">Send CSV to restaurant</button>
-<span id="msg" class="m"></span></p>{% endif %}</div>
-<div class="card"><table><tr><th>Item</th><th>Qty</th><th>Price</th><th>Status</th></tr>
-{% for i in items %}<tr><td>{{ i.item_name }}</td><td>{{ i.quantity }}</td><td>₹{{ i.unit_price|int }}</td><td><span class="tag {{ i.status }}">{{ i.status }}</span></td></tr>{% endfor %}</table></div>
-<div class="card"><h3>Input CSV — {{ o.input_file }}</h3><div id="in"></div>
-<p><a class="btn o" href="/api/orders/{{ o.order_id }}/input" target="_blank">Open</a> <a class="btn o" href="/api/orders/{{ o.order_id }}/input?download=1">Download</a></p></div>
-{% if o.result_file %}<div class="card"><h3>Output CSV — {{ o.result_file }}</h3><div id="out"></div>
-<p><a class="btn o" href="/api/orders/{{ o.order_id }}/result" target="_blank">Open</a> <a class="btn o" href="/api/orders/{{ o.order_id }}/result?download=1">Download</a></p></div>{% endif %}
+<div class="page-header">
+  <div>
+    <a href="/orders" style="text-decoration:none; color:var(--primary); font-weight:700; font-size:13px; display:inline-block; margin-bottom:8px">← Back to My Orders</a>
+    <h1>Order #{{ o.order_id }}</h1>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:4px">
+      <span class="restaurant-tag" style="font-size:13px; font-weight:700">🏪 {{ r.name }}</span>
+      <span class="tag {{ o.status|replace(' ','_') }}">{{ o.status }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Order Stage Progression Stepper -->
+<div class="card" style="margin-bottom:24px">
+  <div class="card-header">
+    <h3>Order Fulfillment & CSV Pipeline</h3>
+    <span class="m">Live sync with kitchen WSGI service</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-top:10px">
+    {% for label, done in [("Order Created",1),("CSV Generated",1),("Sent to Kitchen",s!='CREATED'),("Kitchen Received",s!='CREATED'),("Kitchen Processed",s=='RESULT'),("Result Received",s=='RESULT')] %}
+    <div style="background:{% if done %}#ECFDF5{% elif s=='SENT' and loop.index==5 %}#EFF6FF{% else %}#F8FAFC{% endif %}; border:1px solid {% if done %}#A7F3D0{% elif s=='SENT' and loop.index==5 %}#BFDBFE{% else %}var(--border){% endif %}; padding:12px; border-radius:var(--radius-sm); text-align:center">
+      <div style="font-size:16px; margin-bottom:4px">
+        {% if done %}✅{% elif s=='SENT' and loop.index==5 %}⏳{% else %}⚪{% endif %}
+      </div>
+      <b style="font-size:12.5px; color:{% if done %}#065F46{% elif s=='SENT' and loop.index==5 %}#1D4ED8{% else %}#64748B{% endif %}">
+        {{ label }}
+      </b>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if s=='CREATED' %}
+  <div style="margin-top:20px; padding:16px; background:#F8FAFC; border-radius:var(--radius-sm); border:1px solid var(--border)">
+    <p class="m" style="margin-bottom:10px">Your order CSV has been created locally. Send it to the restaurant backend to begin kitchen preparation.</p>
+    <button id="send" class="btn btn-primary" onclick="send()">Send CSV to Restaurant Kitchen</button>
+    <span id="msg" class="m" style="margin-left:12px; font-weight:600"></span>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Order Items List -->
+<div class="card" style="margin-bottom:24px">
+  <div class="card-header">
+    <h3>Ordered Items & Pricing</h3>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Dish / Item</th>
+        <th>Quantity</th>
+        <th>Unit Price</th>
+        <th>Subtotal</th>
+        <th>Item Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in items %}
+      <tr>
+        <td><b>{{ i.item_name }}</b></td>
+        <td>{{ i.quantity }}</td>
+        <td>₹{{ i.unit_price|int }}</td>
+        <td><b>₹{{ (i.quantity * i.unit_price)|int }}</b></td>
+        <td><span class="tag {{ i.status }}">{{ i.status }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Input CSV File Inspection -->
+<div class="card" style="margin-bottom:24px">
+  <div class="card-header">
+    <div>
+      <h3 style="margin-bottom:4px">Input Transmission File — {{ o.input_file }}</h3>
+      <span class="m">CSV payload dispatched to the kitchen backend</span>
+    </div>
+    <div style="display:flex; gap:8px">
+      <a class="btn btn-xs btn-outline" href="/api/orders/{{ o.order_id }}/input" target="_blank">Open Raw CSV</a>
+      <a class="btn btn-xs btn-outline" href="/api/orders/{{ o.order_id }}/input?download=1">Download</a>
+    </div>
+  </div>
+  <div id="in" style="background:#F8FAFC; padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border); overflow-x:auto"></div>
+</div>
+
+{% if o.result_file %}
+<!-- Output CSV File Inspection -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3 style="margin-bottom:4px">Output Result File — {{ o.result_file }}</h3>
+      <span class="m">Processed order confirmation and kitchen fulfillment CSV</span>
+    </div>
+    <div style="display:flex; gap:8px">
+      <a class="btn btn-xs btn-outline" href="/api/orders/{{ o.order_id }}/result" target="_blank">Open Raw CSV</a>
+      <a class="btn btn-xs btn-outline" href="/api/orders/{{ o.order_id }}/result?download=1">Download</a>
+    </div>
+  </div>
+  <div id="out" style="background:#F8FAFC; padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border); overflow-x:auto"></div>
+</div>
+{% endif %}
+
 <script>
-showCsv('/api/orders/{{ o.order_id }}/input',document.getElementById('in'));
-{% if o.result_file %}showCsv('/api/orders/{{ o.order_id }}/result',document.getElementById('out'));{% endif %}
-async function send(){const b=document.getElementById('send');b.disabled=true;document.getElementById('msg').textContent='Sending… (can take ~1 min if the restaurant app is waking up)';
-const r=await fetch('/api/orders/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:'{{ o.order_id }}'})});
-const d=await r.json();d.success?location.reload():(alert(d.message),b.disabled=false)}
-{% if s!='RESULT' %}setInterval(async()=>{const d=await (await fetch('/api/orders/{{ o.order_id }}')).json();if(d.stage!=='{{ s }}')location.reload()},3000);{% endif %}
-</script>{% endblock %}
+showCsv('/api/orders/{{ o.order_id }}/input', document.getElementById('in'));
+{% if o.result_file %}showCsv('/api/orders/{{ o.order_id }}/result', document.getElementById('out'));{% endif %}
+
+async function send() {
+  const b = document.getElementById('send');
+  b.disabled = true;
+  document.getElementById('msg').textContent = 'Sending CSV to kitchen… (takes ~1-2s)';
+  const r = await fetch('/api/orders/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order_id: '{{ o.order_id }}' })
+  });
+  const d = await r.json();
+  if (d.success) {
+    location.reload();
+  } else {
+    alert(d.message);
+    b.disabled = false;
+  }
+}
+
+{% if s != 'RESULT' %}
+setInterval(async () => {
+  const d = await (await fetch('/api/orders/{{ o.order_id }}')).json();
+  if (d.stage !== '{{ s }}') location.reload();
+}, 3000);
+{% endif %}
+</script>
+{% endblock %}

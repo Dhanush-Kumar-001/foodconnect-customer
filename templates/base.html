@@ -11,14 +11,15 @@
   <nav class="navbar">
     <div class="nav-container">
       <a class="nav-brand" href="/">
-        <span class="brand-icon">🍽️</span> FoodConnect
+        <span class="brand-icon">🍽️</span> FoodConnect<span class="brand-dot">.</span>
       </a>
+      {% set p = request.path %}
       <div class="nav-links">
-        <a href="/" class="nav-item">Restaurants</a>
-        <a href="/planner" class="nav-item">📅 Meal Planner</a>
-        <a href="/group-deals" class="nav-item">⚡ Group Deals</a>
-        <a href="/charity" class="nav-item">🤝 Surplus Food</a>
-        <a href="/orders" class="nav-item">📋 My Orders</a>
+        <a href="/" class="nav-item {{ 'active' if p == '/' else '' }}">🍽️ Restaurants</a>
+        <a href="/planner" class="nav-item {{ 'active' if p == '/planner' else '' }}">📅 Meal Planner</a>
+        <a href="/group-deals" class="nav-item {{ 'active' if p == '/group-deals' else '' }}">⚡ Group Deals</a>
+        <a href="/charity" class="nav-item {{ 'active' if p == '/charity' else '' }}">🤝 Surplus Food</a>
+        <a href="/orders" class="nav-item {{ 'active' if p.startswith('/orders') else '' }}">📋 Orders</a>
       </div>
       <div class="nav-right" style="display:flex; align-items:center; gap:12px;">
         <!-- Notification Bell Dropdown -->

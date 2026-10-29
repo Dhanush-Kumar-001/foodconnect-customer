@@ -1,19 +1,33 @@
 {% extends "base.html" %}{% block c %}
-<div class="page-header">
-  <div>
-    <h1>Scheduled Food Ordering & Meal Planner</h1>
-    <p class="subtitle">Plan meals for the week or month ahead. Select multiple items with custom quantities, reserve kitchen portions in advance, and enjoy automatic wallet billing.</p>
+<!-- Reference Image 1 (FlavorFit): 3D Mascot Meal Planner Banner -->
+<div class="mascot-hero-banner">
+  <div class="mascot-img-box">
+    <img src="{{ url_for('static', filename='img/mascot_meal.jpg') }}" alt="FlavorFit Mascot">
+  </div>
+  <div class="mascot-content">
+    <h2>Got a Meal Plan That Rocks?</h2>
+    <p>Schedule your weekly nutrition in advance! Portions are guaranteed & reserved directly with partner kitchens with auto-wallet debit.</p>
+    <div class="mascot-tags">
+      <span class="mascot-pill">🥗 Balanced Nutrition</span>
+      <span class="mascot-pill">📦 Guaranteed Kitchen Portions</span>
+      <span class="mascot-pill">💳 Auto-Wallet Debit</span>
+      <span class="mascot-pill">🛡️ Zero Payment Failures</span>
+    </div>
   </div>
   <div>
-    <button class="btn btn-outline" onclick="triggerAutoRun()">⚡ Check & Run Due Orders Now</button>
+    <button class="btn btn-outline" onclick="triggerAutoRun()" style="background:#FFFFFF; color:#4F46E5; font-weight:800; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.15)">
+      ⚡ Run Due Orders
+    </button>
   </div>
 </div>
 
-<!-- Weekly Days Ribbon -->
+<!-- Reference Image 1: Weekly Days Ribbon -->
 <div class="card week-ribbon">
   <div class="card-header">
-    <h3>Quick Meal Planning for the Week</h3>
-    <span class="m">Click any day to schedule for that upcoming date</span>
+    <div>
+      <h3>Quick Meal Planning for the Week</h3>
+      <span class="m">Click any day to schedule upcoming lunches, breakfasts, or dinners</span>
+    </div>
   </div>
   <div class="days-grid">
     {% for day_name, d_offset in [('Monday', 1), ('Tuesday', 2), ('Wednesday', 3), ('Thursday', 4), ('Friday', 5), ('Saturday', 6), ('Sunday', 7)] %}
@@ -28,21 +42,22 @@
 </div>
 
 <!-- Interactive Multi-Item Meal Scheduler -->
-<div class="card" id="scheduler_form" style="margin-top:20px; border-left:4px solid var(--a)">
+<div class="card" id="scheduler_form" style="margin-top:24px; border-left:4px solid var(--primary)">
   <div class="card-header">
     <div>
-      <h3>🍽️ Schedule a Meal Plan (Select Multiple Items & Quantities)</h3>
-      <span class="m">Selected dishes are reserved in the restaurant's inventory to guarantee fresh availability.</span>
+      <h3>🍽️ Schedule a Meal Plan (Select Multiple Dishes & Quantities)</h3>
+      <span class="m">Selected dishes are reserved in the restaurant's inventory to guarantee fresh availability on your chosen date.</span>
     </div>
-    <span class="wallet-badge" style="padding:4px 10px; font-size:12px">
-      Wallet Balance: <b>₹{{ wallet.balance|int }}</b>
+    <span class="wallet-badge">
+      <span class="wallet-icon">💳</span>
+      <span>Wallet: <b>₹{{ wallet.balance|int }}</b></span>
     </span>
   </div>
 
-  <div class="form-row" style="margin-top:10px">
+  <div class="form-row" style="margin-top:14px; flex-wrap:wrap">
     <!-- 1. Restaurant Picker -->
-    <div class="form-group" style="flex:1.2">
-      <label><b>1. Select Restaurant</b></label>
+    <div class="form-group" style="flex:1.2; min-width:200px">
+      <label style="font-weight:700">1. Select Restaurant</label>
       <select id="plan_rid" class="form-input" onchange="onRestaurantChange()">
         {% for rid, r in restaurants.items() %}
         <option value="{{ rid }}">{{ r.name }}</option>
@@ -51,8 +66,8 @@
     </div>
 
     <!-- 2. Meal Category -->
-    <div class="form-group" style="flex:1">
-      <label><b>2. Meal Category</b></label>
+    <div class="form-group" style="flex:1; min-width:180px">
+      <label style="font-weight:700">2. Meal Category</label>
       <select id="plan_meal_type" class="form-input" onchange="onMealTypeChange()">
         <option value="BREAKFAST">🌅 Breakfast (08:30 AM)</option>
         <option value="LUNCH" selected>☀️ Lunch (12:30 PM)</option>
@@ -61,34 +76,34 @@
     </div>
 
     <!-- 3. Scheduled Date -->
-    <div class="form-group" style="flex:1">
-      <label><b>3. Scheduled Date</b></label>
+    <div class="form-group" style="flex:1; min-width:160px">
+      <label style="font-weight:700">3. Scheduled Date</label>
       <input type="date" id="plan_date" class="form-input">
     </div>
 
     <!-- 4. Scheduled Time -->
-    <div class="form-group" style="flex:0.8">
-      <label><b>4. Scheduled Time</b></label>
+    <div class="form-group" style="flex:0.8; min-width:130px">
+      <label style="font-weight:700">4. Scheduled Time</label>
       <input type="time" id="plan_time" class="form-input" value="12:30">
     </div>
   </div>
 
-  <!-- Multi-Item Menu Selection Container -->
+  <!-- Multi-Item Menu Selection Container with Dish Thumbnails (Reference Image 1) -->
   <div class="multi-item-card">
     <div class="multi-item-header">
       <span>Food Items & Menu Portions</span>
-      <span class="m" style="font-weight:normal; font-size:12px">Check items and set desired portions for your meal</span>
+      <span class="m" style="font-weight:normal; font-size:12px">Check dishes and adjust portions to build your meal</span>
     </div>
 
     <div id="multi_item_list">
-      <!-- Injected via JavaScript based on restaurant menu -->
+      <!-- Injected via JavaScript with dish thumbnails based on restaurant menu -->
     </div>
 
     <!-- Multi-Item Summary & Action Bar -->
     <div class="multi-item-summary-bar">
       <div>
-        <span id="summary_item_count" style="font-weight:600; color:var(--t)">0 items selected</span>
-        <span class="m" style="margin-left:8px">(Estimated Total: <b id="summary_total_price" style="font-size:16px; color:var(--a)">₹0</b>)</span>
+        <span id="summary_item_count" style="font-weight:700; color:var(--t-heading)">0 portion(s) selected</span>
+        <span class="m" style="margin-left:8px">(Estimated Total: <b id="summary_total_price" style="font-size:17px; color:var(--primary)">₹0</b>)</span>
       </div>
       <button class="btn btn-primary" onclick="scheduleMeal()">
         + Schedule Meal Plan & Reserve in Kitchen
@@ -98,10 +113,12 @@
 </div>
 
 <!-- Scheduled Orders Table -->
-<div class="card" style="margin-top:20px">
+<div class="card" style="margin-top:24px">
   <div class="card-header">
-    <h3>Upcoming & Past Scheduled Meals</h3>
-    <span class="m">Reserved with restaurant kitchen • Auto-debited from wallet on scheduled date</span>
+    <div>
+      <h3>Upcoming & Past Scheduled Meals</h3>
+      <span class="m">Portions pre-reserved with partner kitchens • Auto-debited from wallet on delivery date</span>
+    </div>
   </div>
 
   {% if scheduled %}
@@ -136,7 +153,7 @@
             {% endfor %}
           </div>
         </td>
-        <td><b>₹{{ s.total_amount|int }}</b></td>
+        <td><b style="font-size:15px; color:var(--t-heading)">₹{{ s.total_amount|int }}</b></td>
         <td>
           {% if s.status == 'SCHEDULED' %}
           <span class="tag ACCEPTED">Portions Reserved</span>
@@ -147,16 +164,16 @@
           {% elif s.status == 'EXECUTED' %}
           <span class="tag ACCEPTED">✓ Executed & Ordered</span>
           {% elif s.status == 'CANCELLED' %}
-          <span class="tag" style="background:#e2e8f0; color:#475569">Cancelled by You</span>
+          <span class="tag" style="background:#E2E8F0; color:#475569">Cancelled</span>
           {% else %}
           <span class="tag REJECTED">Failed ({{ s.failure_reason }})</span>
           {% endif %}
         </td>
         <td>
           {% if s.status == 'SCHEDULED' %}
-          <button class="btn btn-xs btn-danger" onclick="cancelSched('{{ s.id }}')">Cancel</button>
+          <button class="btn btn-xs btn-outline" style="color:var(--r); border-color:#FECACA" onclick="cancelSched('{{ s.id }}')">Cancel</button>
           {% elif s.status == 'EXECUTED' and s.created_order_id %}
-          <a class="btn btn-xs btn-primary" href="/orders/{{ s.created_order_id }}">View Order CSV</a>
+          <a class="btn btn-xs btn-primary" href="/orders/{{ s.created_order_id }}">View Order</a>
           {% else %}
           <span class="m">—</span>
           {% endif %}
@@ -166,8 +183,8 @@
     </tbody>
   </table>
   {% else %}
-  <div class="empty-state">
-    <p>No meals scheduled yet. Select a restaurant and dishes above to plan your upcoming meals!</p>
+  <div class="empty-state" style="padding:28px; text-align:center">
+    <p class="m">No meals scheduled yet. Select a restaurant and dishes above to plan your upcoming meals!</p>
   </div>
   {% endif %}
 </div>
@@ -175,7 +192,19 @@
 <script>
 const RESTAURANT_DATA = {{ restaurants_json|safe }};
 
-// Set default date to tomorrow
+const dishImages = {
+  'Chicken Biryani': "{{ url_for('static', filename='img/dish_biryani.jpg') }}",
+  'Paneer Rice': "{{ url_for('static', filename='img/dish_paneer_rice.jpg') }}",
+  'Coke': "{{ url_for('static', filename='img/dish_coke.jpg') }}",
+  'Masala Dosa': "{{ url_for('static', filename='img/dish_dosa.jpg') }}",
+  'Idli Sambar': "{{ url_for('static', filename='img/dish_idli.jpg') }}",
+  'Filter Coffee': "{{ url_for('static', filename='img/dish_filter_coffee.jpg') }}",
+  'Veg Burger': "{{ url_for('static', filename='img/dish_burger.jpg') }}",
+  'French Fries': "{{ url_for('static', filename='img/dish_fries.jpg') }}",
+  'Cold Coffee': "{{ url_for('static', filename='img/dish_cold_coffee.jpg') }}"
+};
+
+// Default date to tomorrow
 const tmr = new Date();
 tmr.setDate(tmr.getDate() + 1);
 const pad = n => String(n).padStart(2, '0');
@@ -192,22 +221,24 @@ function onRestaurantChange() {
     const price = details[0];
     const desc = details[1] || '';
     const isFirst = (idx === 0);
+    const thumbUrl = dishImages[dishName] || "{{ url_for('static', filename='img/dish_burger.jpg') }}";
 
     const row = document.createElement('div');
     row.className = 'multi-item-row';
     row.innerHTML = `
       <div class="multi-item-info">
         <input type="checkbox" class="multi-item-checkbox" id="chk_${idx}" data-dish="${dishName}" data-price="${price}" ${isFirst ? 'checked' : ''} onchange="updateSummary()">
+        <img src="${thumbUrl}" alt="${dishName}" class="multi-item-thumb">
         <div>
           <label for="chk_${idx}" class="multi-item-title" style="cursor:pointer">${dishName}</label>
           <div class="multi-item-desc">${desc} • ₹${price} per portion</div>
         </div>
       </div>
       <div class="multi-item-controls">
-        <div class="qty-stepper">
-          <button class="stepper-btn" type="button" onclick="changeQty(${idx}, -1)">−</button>
-          <input type="number" id="qty_${idx}" class="stepper-input" value="1" min="1" max="20" onchange="updateSummary()">
-          <button class="stepper-btn" type="button" onclick="changeQty(${idx}, 1)">+</button>
+        <div class="stepper-control" style="background:#FFFFFF">
+          <button class="circle-btn" type="button" onclick="changeQty(${idx}, -1)">−</button>
+          <input type="number" id="qty_${idx}" class="stepper-qty" value="1" min="1" max="20" onchange="updateSummary()" style="border:none; background:transparent; width:30px">
+          <button class="circle-btn btn-add" type="button" onclick="changeQty(${idx}, 1)">+</button>
         </div>
         <div class="multi-item-subtotal" id="sub_${idx}">₹${price}</div>
       </div>
@@ -344,4 +375,3 @@ async function triggerAutoRun() {
 onRestaurantChange();
 </script>
 {% endblock %}
-

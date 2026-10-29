@@ -1,66 +1,159 @@
 {% extends "base.html" %}{% block c %}
-<div class="hero-section">
-  <div class="hero-content">
-    <h1>Delicious Food, Scheduled Meals & Group Discounts</h1>
-    <p>Order fresh meals, plan your weekly diet with auto-wallet deduction, or team up for bulk group buying deals.</p>
-    <div class="hero-badges">
-      <span class="badge-pill">⚡ Live CSV Transmission</span>
-      <span class="badge-pill">📅 Advance Meal Planner</span>
-      <span class="badge-pill">📦 Real-time Stock Sync</span>
-      <span class="badge-pill">💳 In-Built Wallet</span>
+<!-- Reference Image 2 & 4: Food Experience Hero Section -->
+<div class="experience-hero">
+  <div class="hero-left-content">
+    <div class="hero-tagline">
+      <span>🚀 Smart Food Ordering & Meal Planning</span>
+    </div>
+    <h1>It's not just Food,<br>It's an <span class="italic-accent">Experience</span>.</h1>
+    <p>
+      Discover signature dishes from top partner restaurants, automate weekly healthy meals with our in-built wallet, or join fellow foodies for exclusive group buying flash discounts.
+    </p>
+
+    <!-- Search Input matching Reference Image 4 & preserving JS filter f() -->
+    <div class="hero-search-bar">
+      <input id="s" class="hero-search-input" placeholder="🔍 Search restaurants, biryani, burgers, dosa, coffee..." oninput="f()">
+      <button class="hero-search-btn" onclick="document.getElementById('restaurants_section').scrollIntoView({behavior:'smooth'})">Find Restaurant</button>
+    </div>
+
+    <!-- Social Proof Reviews Strip matching Reference Image 2 -->
+    <div class="hero-reviews-strip">
+      <div class="avatar-group">
+        <div class="avatar-circle" style="background-image:url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80')"></div>
+        <div class="avatar-circle" style="background-image:url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80')"></div>
+        <div class="avatar-circle" style="background-image:url('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80')"></div>
+        <div class="avatar-circle avatar-more">45+</div>
+      </div>
+      <div class="reviews-info">
+        <div class="reviews-stars">★★★★★</div>
+        <span class="reviews-text">4.9 / 5 from 1,200+ happy food lovers</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero Graphic Plate matching Reference Image 2 -->
+  <div class="hero-graphic-wrap">
+    <img src="{{ url_for('static', filename='img/hero_dish.jpg') }}" alt="Gourmet Food Experience" class="hero-plate-img">
+    <div class="floating-discount-badge">
+      <div class="fdb-icon">%</div>
+      <div class="fdb-text">
+        <span class="fdb-title">Up to 40% OFF</span>
+        <span class="fdb-sub">with Group Buying</span>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="feature-strip">
-  <a href="/planner" class="feature-card">
-    <div class="fc-icon">📅</div>
-    <div class="fc-text">
-      <b>Meal Planning</b>
-      <span>Schedule orders for the week ahead with auto-wallet debit.</span>
+<!-- Reference Image 4: Popular Categories Ribbon -->
+<div class="categories-ribbon-section">
+  <div class="section-headline-row">
+    <h3>Popular Food Categories</h3>
+    <span class="m">Browse by craving</span>
+  </div>
+  <div class="categories-scroll-row">
+    <div class="category-avatar-card" onclick="filterCategory('biryani')">
+      <div class="cat-circle cat-bg-biryani">🍛</div>
+      <span class="cat-label">Biryani</span>
     </div>
+    <div class="category-avatar-card" onclick="filterCategory('burger')">
+      <div class="cat-circle cat-bg-burger">🍔</div>
+      <span class="cat-label">Burgers</span>
+    </div>
+    <div class="category-avatar-card" onclick="filterCategory('dosa')">
+      <div class="cat-circle cat-bg-dosa">🥞</div>
+      <span class="cat-label">South Indian</span>
+    </div>
+    <div class="category-avatar-card" onclick="filterCategory('rice')">
+      <div class="cat-circle cat-bg-rice">🍚</div>
+      <span class="cat-label">Rice Bowls</span>
+    </div>
+    <div class="category-avatar-card" onclick="filterCategory('fries')">
+      <div class="cat-circle cat-bg-fries">🍟</div>
+      <span class="cat-label">Snacks & Fries</span>
+    </div>
+    <div class="category-avatar-card" onclick="filterCategory('coffee')">
+      <div class="cat-circle cat-bg-coffee">☕</div>
+      <span class="cat-label">Coffee & Shakes</span>
+    </div>
+    <div class="category-avatar-card" onclick="location.href='/planner'">
+      <div class="cat-circle cat-bg-healthy">🥗</div>
+      <span class="cat-label">Healthy Plans</span>
+    </div>
+  </div>
+</div>
+
+<!-- Reference Image 1 & 4: Vibrant Promo Banners Strip -->
+<div class="promo-strip-grid">
+  <!-- Yellow Banner: Meal Planning -->
+  <a href="/planner" class="promo-banner-card promo-bg-yellow">
+    <div>
+      <span class="promo-badge-tag">📅 Automated Nutrition</span>
+      <h2 class="promo-title">Scheduled Meal Planning</h2>
+      <p class="promo-desc">Plan breakfasts, lunches & dinners for the week ahead with automatic wallet billing & reserved kitchen portions.</p>
+    </div>
+    <div class="promo-cta-btn">Plan Meals Ahead →</div>
   </a>
-  <a href="/group-deals" class="feature-card">
-    <div class="fc-icon">⚡</div>
-    <div class="fc-text">
-      <b>Group Buying Deals</b>
-      <span>Join flash deals with other foodies and unlock up to 40% OFF.</span>
+
+  <!-- Red Banner: Group Deals -->
+  <a href="/group-deals" class="promo-banner-card promo-bg-red">
+    <div>
+      <span class="promo-badge-tag">⚡ 40% OFF Flash Deals</span>
+      <h2 class="promo-title">Group Buying Power</h2>
+      <p class="promo-desc">Team up with colleagues and foodies. Unlock bulk restaurant pricing with 100% wallet refund guarantee if quota is unmet.</p>
     </div>
+    <div class="promo-cta-btn">View Flash Deals →</div>
   </a>
-  <a href="/wallet" class="feature-card">
-    <div class="fc-icon">💳</div>
-    <div class="fc-text">
-      <b>In-Built Wallet</b>
-      <span>Instant 1-click checkout and automated scheduled payments.</span>
+
+  <!-- Peach Banner: Surplus Food Charity Relief -->
+  <a href="/charity" class="promo-banner-card promo-bg-peach">
+    <div>
+      <span class="promo-badge-tag">🤝 Zero Food Waste</span>
+      <h2 class="promo-title">Surplus Food Relief</h2>
+      <p class="promo-desc">Connecting verified NGOs with surplus fresh kitchen batches. Real-time portion claims & strict safety pickup windows.</p>
     </div>
-  </a>
-  <a href="/charity" class="feature-card">
-    <div class="fc-icon">🤝</div>
-    <div class="fc-text">
-      <b>Surplus Food Relief</b>
-      <span>Track and support restaurant-to-charity surplus meal donations.</span>
-    </div>
+    <div class="promo-cta-btn">View Charity Relay →</div>
   </a>
 </div>
 
-<div class="section-header">
+<!-- Reference Image 4 & 5: Partner Restaurants Section -->
+<div id="restaurants_section" class="section-headline-row" style="margin-top:28px">
   <div>
     <h2>Explore Partner Restaurants</h2>
-    <p class="m">Browse menus with real-time portion inventory tracking.</p>
+    <p class="subtitle">Hand-crafted culinary experiences with live kitchen inventory tracking</p>
   </div>
-  <div class="search-box">
-    <input id="s" class="form-input" placeholder="🔍 Search restaurants, biryani, burgers, dosa..." oninput="f()">
+  <div class="badge-pill" style="background:#F1F5F9; color:#475569; font-weight:700">
+    Showing {{ restaurants|length }} Kitchens
   </div>
 </div>
 
-<div class="grid" style="margin-top:16px">
+<div class="restaurants-grid">
   {% for id, r in restaurants.items() %}
-  <a class="card rest-card" href="/menu/{{ id }}" data-k="{{ (r.name ~ ' ' ~ r['menu'].keys()|join(' '))|lower }}">
-    <div class="rest-badge">{{ id }}</div>
-    <h3>{{ r.name }}</h3>
-    <p class="m">Specialties: {{ r['menu'].keys()|join(', ') }}</p>
-    <div class="rest-footer">
-      <span class="view-menu">View Menu & Order →</span>
+  {% set rest_img = 'img/rest_royal.jpg' if id == 'R001' else ('img/rest_south.jpg' if id == 'R002' else 'img/rest_fastfood.jpg') %}
+  {% set badge_tag = 'Top Rated Mughlai' if id == 'R001' else ('Authentic Traditional' if id == 'R002' else 'Fast Casual Bistro') %}
+  {% set rating = '4.9 (420+)' if id == 'R001' else ('4.8 (310+)' if id == 'R002' else '4.7 (580+)') %}
+  {% set delivery_time = '20-30 min' if id == 'R001' else ('15-20 min' if id == 'R002' else '12-18 min') %}
+
+  <a class="restaurant-card rest-card" href="/menu/{{ id }}" data-k="{{ (r.name ~ ' ' ~ r['menu'].keys()|join(' '))|lower }}">
+    <div class="rest-img-wrapper">
+      <img src="{{ url_for('static', filename=rest_img) }}" alt="{{ r.name }}" class="rest-cover-img">
+      <span class="rest-floating-badge">{{ badge_tag }}</span>
+      <span class="rest-rating-badge">★ {{ rating }}</span>
+    </div>
+
+    <div class="rest-card-content">
+      <div class="rest-title-row">
+        <h3 class="rest-name">{{ r.name }}</h3>
+        <span class="rest-time">🕒 {{ delivery_time }}</span>
+      </div>
+
+      <p class="rest-specialties">
+        <b>Specialties:</b> {{ r['menu'].keys()|join(', ') }}
+      </p>
+
+      <div class="rest-card-footer">
+        <span class="m" style="font-weight:600">ID: {{ id }} • Live Inventory Sync</span>
+        <span class="rest-cta-link">View Menu & Order →</span>
+      </div>
     </div>
   </a>
   {% endfor %}
@@ -72,6 +165,13 @@ function f() {
   document.querySelectorAll('.rest-card').forEach(e => {
     e.style.display = e.dataset.k.includes(q) ? '' : 'none';
   });
+}
+
+function filterCategory(cat) {
+  const searchInput = document.getElementById('s');
+  searchInput.value = cat;
+  f();
+  document.getElementById('restaurants_section').scrollIntoView({ behavior: 'smooth' });
 }
 </script>
 {% endblock %}

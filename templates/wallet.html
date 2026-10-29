@@ -2,32 +2,36 @@
 <div class="page-header">
   <div>
     <h1>In-Built Customer Wallet</h1>
-    <p class="subtitle">Secure digital wallet for instant food checkouts, automated scheduled meal billing, and group buying reservations.</p>
+    <p class="subtitle">Secure digital wallet for instant food checkouts, automated scheduled meal planning debits, and group buying reservations.</p>
   </div>
 </div>
 
-<div class="grid-2col">
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:24px; margin-bottom:28px">
   <!-- Balance & Top Up Card -->
-  <div class="card wallet-card">
-    <div class="wallet-balance-box">
-      <span class="wallet-sub">Available Balance</span>
-      <div class="wallet-big-number">₹{{ wallet.balance|int }}</div>
-      <span class="m">Account ID: {{ wallet.customer_id }}</span>
+  <div class="card" style="padding:0; overflow:hidden">
+    <div style="background:linear-gradient(135deg, #065F46 0%, #047857 50%, #059669 100%); color:#FFFFFF; padding:28px 24px; position:relative">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; opacity:0.9">FoodConnect Digital Wallet</span>
+        <span style="background:rgba(255,255,255,0.2); padding:3px 8px; border-radius:var(--radius-full); font-size:11px; font-weight:700">Account: {{ wallet.customer_id }}</span>
+      </div>
+      <div style="font-size:13px; opacity:0.85">Available Credits</div>
+      <div style="font-size:38px; font-weight:800; letter-spacing:-0.5px; margin:4px 0 10px 0">₹{{ wallet.balance|int }}</div>
+      <div style="font-size:12px; opacity:0.85">✓ Active for automated scheduled debits & 1-click checkout</div>
     </div>
 
-    <div class="topup-section" style="margin-top:20px">
-      <h3>Add Money to Wallet</h3>
-      <p class="m" style="margin-bottom:12px">Select an amount or enter custom credits:</p>
+    <div style="padding:24px">
+      <h3 style="margin-bottom:6px">Add Money to Wallet</h3>
+      <p class="m" style="margin-bottom:14px">Select a quick top-up amount or enter custom credits:</p>
 
-      <div class="quick-topup-btns">
-        <button class="btn btn-outline" onclick="setTopup(100)">+ ₹100</button>
-        <button class="btn btn-outline" onclick="setTopup(300)">+ ₹300</button>
-        <button class="btn btn-outline" onclick="setTopup(500)">+ ₹500</button>
-        <button class="btn btn-outline" onclick="setTopup(1000)">+ ₹1,000</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px">
+        <button class="btn btn-xs btn-outline" type="button" onclick="setTopup(100)">+ ₹100</button>
+        <button class="btn btn-xs btn-outline" type="button" onclick="setTopup(300)">+ ₹300</button>
+        <button class="btn btn-xs btn-outline" type="button" onclick="setTopup(500)">+ ₹500</button>
+        <button class="btn btn-xs btn-outline" type="button" onclick="setTopup(1000)">+ ₹1,000</button>
       </div>
 
-      <div class="form-row" style="margin-top:14px">
-        <div class="form-group">
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
           <input type="number" id="topup_amt" class="form-input" placeholder="Enter amount in ₹" value="500" min="10">
         </div>
         <div class="form-group" style="flex:0">
@@ -37,21 +41,44 @@
     </div>
   </div>
 
-  <!-- Wallet Benefits Info -->
-  <div class="card info-card">
-    <h3>Why Use FoodConnect Wallet?</h3>
-    <ul class="feature-bullets">
-      <li><b>Zero Payment Failures:</b> Instant 1-click checkout without waiting for bank OTP delays.</li>
-      <li><b>Automated Meal Planning:</b> Scheduled breakfast, lunch, and dinner orders are seamlessly debited on time.</li>
-      <li><b>Instant Refunds:</b> If a restaurant rejects an item or a group buying deal fails, refunds credit immediately back to your wallet.</li>
-      <li><b>Flash Deal Locking:</b> Lock group discounts before public quotas fill up.</li>
-    </ul>
+  <!-- Wallet Benefits Info Card -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Why Use FoodConnect Wallet?</h3>
+      <span class="m">Guaranteed security & instant settlement</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:16px; margin-top:8px">
+      <div style="display:flex; gap:12px">
+        <div style="background:#ECFDF5; color:#059669; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px">⚡</div>
+        <div>
+          <b style="font-size:13.5px; color:var(--t-heading)">Zero Payment Failures</b>
+          <p class="m">Instant 1-click checkout without waiting for bank OTP delays or network timeouts.</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:12px">
+        <div style="background:#EFF6FF; color:#2563EB; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px">📅</div>
+        <div>
+          <b style="font-size:13.5px; color:var(--t-heading)">Automated Scheduled Meal Planning</b>
+          <p class="m">Scheduled breakfast, lunch, and dinner orders are seamlessly debited on time.</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:12px">
+        <div style="background:#FFF1F2; color:#E11D48; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px">🛡️</div>
+        <div>
+          <b style="font-size:13.5px; color:var(--t-heading)">Instant Refund Guarantee</b>
+          <p class="m">If a kitchen rejects an item or a group buying deal fails, refunds credit immediately back to your wallet.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- Transaction History -->
-<div class="card" style="margin-top:20px">
-  <h3>Recent Wallet Activity & Statement</h3>
+<div class="card">
+  <div class="card-header">
+    <h3>Recent Wallet Activity & Statement</h3>
+    <span class="m">Real-time ledger of top-ups, orders, and group deal refunds</span>
+  </div>
   {% if transactions %}
   <table class="data-table">
     <thead>
@@ -72,7 +99,7 @@
           </span>
         </td>
         <td><b>{{ t.description }}</b></td>
-        <td style="font-size:14px; font-weight:700" class="{{ 'text-success' if t.type == 'CREDIT' else 'text-danger' }}">
+        <td style="font-size:14px; font-weight:800; color:{% if t.type == 'CREDIT' %}#059669{% else %}#DC2626{% endif %}">
           {{ '+' if t.type == 'CREDIT' else '-' }} ₹{{ t.amount|int }}
         </td>
       </tr>
@@ -80,7 +107,7 @@
     </tbody>
   </table>
   {% else %}
-  <div class="empty-state">
+  <div class="empty-state" style="padding:28px; text-align:center">
     <p class="m">No transactions recorded yet.</p>
   </div>
   {% endif %}

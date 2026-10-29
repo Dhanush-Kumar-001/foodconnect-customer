@@ -1,56 +1,98 @@
 {% extends "base.html" %}{% block c %}
-<div class="page-header">
+<!-- Restaurant Header with Breadcrumb (Reference Image 5) -->
+<div class="page-header" style="margin-bottom:24px">
   <div>
-    <a href="/" class="btn btn-xs" style="margin-bottom:8px">← Back to Restaurants</a>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:13px; color:var(--m)">
+      <a href="/" style="text-decoration:none; color:var(--primary); font-weight:700">← Back to Restaurants</a>
+      <span>/</span>
+      <span>{{ r.name }}</span>
+    </div>
     <h1>{{ r.name }}</h1>
-    <p class="subtitle">Live kitchen inventory synced. Order now or schedule meals ahead.</p>
+    <div style="display:flex; align-items:center; gap:14px; margin-top:6px; flex-wrap:wrap">
+      <span class="dish-rating" style="font-size:13px; font-weight:800">★ 4.9 (420+ reviews)</span>
+      <span class="m">•</span>
+      <span class="dish-prep-time" style="font-size:13px; font-weight:600">🕒 20-30 min prep</span>
+      <span class="m">•</span>
+      <span class="stock-pill" style="background:#ECFDF5; color:#059669; font-weight:700">✓ Live Kitchen Inventory Synced</span>
+    </div>
   </div>
 </div>
 
 <div class="menu-layout">
-  <!-- Menu Items List -->
+  <!-- Reference Image 5: Dishes Grid -->
   <div class="menu-items-col">
-    <div class="grid">
+    <div class="dishes-grid">
       {% for n, v in r["menu"].items() %}
       {% set stock_info = inventory.get(n, {'available_qty': 20, 'is_sold_out': False, 'is_low_stock': False}) %}
-      <div class="card dish-card {{ 'sold-out-card' if stock_info.is_sold_out else '' }}">
-        <div class="dish-header">
-          <h3>{{ n }}</h3>
-          <span class="dish-price">₹{{ v[0] }}</span>
-        </div>
-        <div class="m" style="margin-bottom:12px">{{ v[1] }}</div>
+      
+      {% set dish_img = 'img/dish_biryani.jpg' if 'Biryani' in n else 
+                       ('img/dish_paneer_rice.jpg' if 'Paneer' in n else 
+                       ('img/dish_dosa.jpg' if 'Dosa' in n else 
+                       ('img/dish_idli.jpg' if 'Idli' in n else 
+                       ('img/dish_burger.jpg' if 'Burger' in n else 
+                       ('img/dish_fries.jpg' if 'Fries' in n else 
+                       ('img/dish_cold_coffee.jpg' if 'Cold' in n else 
+                       ('img/dish_filter_coffee.jpg' if 'Filter' in n else 'img/dish_coke.jpg'))))))) %}
 
-        <!-- Inventory Badge -->
-        <div class="stock-indicator">
-          {% if stock_info.is_sold_out %}
-          <span class="stock-pill sold-out">❌ Sold Out in Kitchen</span>
-          {% elif stock_info.is_low_stock %}
-          <span class="stock-pill low-stock">⚠️ Only {{ stock_info.available_qty }} portions left!</span>
-          {% else %}
-          <span class="stock-pill" style="background:#e0f2fe; color:#0369a1">📦 {{ stock_info.available_qty }} available</span>
-          {% endif %}
+      {% set dish_badge = 'BESTSELLER' if loop.index == 1 else ('CHEF SPECIAL' if loop.index == 2 else 'NEW') %}
+      {% set prep_time = '15-20 min' if loop.index % 2 == 0 else '10-15 min' %}
+      {% set rating_val = '4.9 (140)' if loop.index == 1 else ('4.8 (98)' if loop.index == 2 else '4.7 (76)') %}
+
+      <div class="foodly-dish-card {{ 'sold-out-card' if stock_info.is_sold_out else '' }}">
+        <div class="dish-img-wrap">
+          <img src="{{ url_for('static', filename=dish_img) }}" alt="{{ n }}" class="dish-img">
+          <span class="dish-badge-pill">{{ dish_badge }}</span>
+          <button class="dish-heart-btn" title="Add to favorites" onclick="this.textContent = this.textContent === '❤️' ? '🤍' : '❤️'">🤍</button>
         </div>
 
-        <div class="qty-control" data-n="{{ n }}" data-p="{{ v[0] }}" data-max="{{ stock_info.available_qty }}">
-          {% if not stock_info.is_sold_out %}
-          <button class="qty-btn" onclick="chg(this,-1)">−</button>
-          <b class="qty-num">0</b>
-          <button class="qty-btn" onclick="chg(this,1)">+</button>
-          {% else %}
-          <span class="text-danger" style="font-weight:600; font-size:12px">Temporarily Unavailable</span>
-          {% endif %}
+        <div class="dish-content">
+          <div class="dish-title-row">
+            <h3 class="dish-name">{{ n }}</h3>
+          </div>
+          <p class="dish-desc">{{ v[1] }}</p>
+
+          <div class="dish-meta-row">
+            <span class="dish-rating">★ {{ rating_val }}</span>
+            <span class="dish-prep-time">🕒 {{ prep_time }}</span>
+          </div>
+
+          <!-- Real-time Kitchen Inventory Indicator -->
+          <div class="stock-indicator">
+            {% if stock_info.is_sold_out %}
+            <span class="stock-pill sold-out">❌ Sold Out in Kitchen</span>
+            {% elif stock_info.is_low_stock %}
+            <span class="stock-pill low-stock">⚠️ Only {{ stock_info.available_qty }} portions left!</span>
+            {% else %}
+            <span class="stock-pill" style="background:#E0F2FE; color:#0369A1">📦 {{ stock_info.available_qty }} portions available</span>
+            {% endif %}
+          </div>
+
+          <!-- Price & Circular Stepper Controls (Reference Image 5) -->
+          <div class="dish-action-row">
+            <div class="dish-price-tag">₹{{ v[0] }}</div>
+
+            <div class="qty-control stepper-control" data-n="{{ n }}" data-p="{{ v[0] }}" data-max="{{ stock_info.available_qty }}">
+              {% if not stock_info.is_sold_out %}
+              <button class="circle-btn" onclick="chg(this,-1)" title="Remove 1">−</button>
+              <b class="qty-num stepper-qty">0</b>
+              <button class="circle-btn btn-add" onclick="chg(this,1)" title="Add 1">+</button>
+              {% else %}
+              <span class="text-danger" style="font-weight:700; font-size:12px">Sold Out</span>
+              {% endif %}
+            </div>
+          </div>
         </div>
       </div>
       {% endfor %}
     </div>
   </div>
 
-  <!-- Cart & Scheduling Sidebar -->
+  <!-- Cart & Scheduling Sidebar (Reference Image 5) -->
   <div class="cart-sidebar-col">
     <div class="card checkout-card" id="cart">
-      <h2>Your Cart</h2>
+      <h2 class="cart-title">Your Order Summary</h2>
 
-      <!-- Order Mode Toggle -->
+      <!-- Order Mode Toggle Pills -->
       <div class="order-mode-toggle">
         <label class="mode-label">
           <input type="radio" name="order_mode" value="NOW" checked onchange="toggleMode()"> 🚀 Order Now
@@ -60,53 +102,57 @@
         </label>
       </div>
 
-      <!-- Schedule Options (Hidden by default) -->
-      <div id="schedule_fields" style="display:none; margin:14px 0; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid var(--border)">
-        <div class="form-group" style="margin-bottom:8px">
-          <label style="font-size:12px; font-weight:600">Meal Category</label>
+      <!-- Schedule Options (Hidden by default, reveals on toggle) -->
+      <div id="schedule_fields" style="display:none; margin:14px 0; padding:16px; background:#F8FAFC; border-radius:var(--radius); border:1px solid var(--border)">
+        <div class="form-group" style="margin-bottom:10px">
+          <label style="font-size:12.5px; font-weight:700">Meal Category</label>
           <select id="sched_meal_type" class="form-input">
             <option value="BREAKFAST">🌅 Breakfast (8:30 AM)</option>
             <option value="LUNCH" selected>☀️ Lunch (12:30 PM)</option>
             <option value="DINNER">🌙 Dinner (8:00 PM)</option>
           </select>
         </div>
-        <div class="form-group" style="margin-bottom:8px">
-          <label style="font-size:12px; font-weight:600">Scheduled Date</label>
+        <div class="form-group" style="margin-bottom:10px">
+          <label style="font-size:12.5px; font-weight:700">Scheduled Date</label>
           <input type="date" id="sched_date" class="form-input">
         </div>
         <div class="form-group">
-          <label style="font-size:12px; font-weight:600">Scheduled Time</label>
+          <label style="font-size:12.5px; font-weight:700">Scheduled Time</label>
           <input type="time" id="sched_time" class="form-input" value="12:30">
         </div>
-        <p class="m" style="margin-top:6px; font-size:11.5px">⚡ Amount will be auto-debited from your in-built wallet on the scheduled date!</p>
+        <p class="m" style="margin-top:8px; font-size:11.5px; color:#059669; font-weight:600">
+          ⚡ Guaranteed portion reservation with auto-wallet deduction on order date.
+        </p>
       </div>
 
       <!-- Cart Itemized Lines -->
-      <div id="lines" class="cart-lines">Select quantities to start your order.</div>
+      <div id="lines" class="cart-lines">Select quantities from the menu to start your order.</div>
 
       <!-- Payment Method -->
-      <div id="payment_picker" style="margin-top:14px; border-top:1px solid var(--border); padding-top:10px">
-        <label style="font-size:12.5px; font-weight:600; display:block; margin-bottom:6px">Payment Option</label>
-        <label style="display:block; font-size:13px; margin-bottom:4px">
+      <div id="payment_picker" style="margin-top:14px; border-top:1px solid var(--border-light); padding-top:14px">
+        <label style="font-size:12.5px; font-weight:700; display:block; margin-bottom:8px">Payment Option</label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px; cursor:pointer">
           <input type="radio" name="pay_opt" value="WALLET" checked>
-          💳 In-Built Wallet (Balance: ₹{{ wallet.balance|int }})
+          <span>💳 <b>In-Built Wallet</b> (Available: ₹{{ wallet.balance|int }})</span>
         </label>
-        <label id="cod_label" style="display:block; font-size:13px">
+        <label id="cod_label" style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer">
           <input type="radio" name="pay_opt" value="COD">
-          💵 Cash on Delivery (COD)
+          <span>💵 Cash on Delivery (COD)</span>
         </label>
       </div>
 
-      <div class="cart-summary" style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px">
-        <h3 id="tot" style="margin:0 0 12px 0">Total: ₹0</h3>
-        <button id="go" class="btn btn-primary btn-block" onclick="placeOrder()" disabled>Place Order Now</button>
+      <div class="cart-summary" style="margin-top:16px; border-top:1px solid var(--border-light); padding-top:16px">
+        <div class="cart-total-price" id="tot">Total: ₹0</div>
+        <button id="go" class="btn btn-primary btn-block" onclick="placeOrder()" disabled style="font-size:15px; padding:12px">
+          Place Order Now
+        </button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-// Set default date for schedule to tomorrow
+// Default date for schedule to tomorrow
 const tom = new Date();
 tom.setDate(tom.getDate() + 1);
 document.getElementById('sched_date').value = tom.toISOString().split('T')[0];
@@ -114,7 +160,7 @@ document.getElementById('sched_date').value = tom.toISOString().split('T')[0];
 function toggleMode() {
   const isSched = document.querySelector('input[name="order_mode"]:checked').value === 'SCHEDULE';
   document.getElementById('schedule_fields').style.display = isSched ? 'block' : 'none';
-  document.getElementById('cod_label').style.display = isSched ? 'none' : 'block';
+  document.getElementById('cod_label').style.display = isSched ? 'none' : 'flex';
   if (isSched) {
     document.querySelector('input[name="pay_opt"][value="WALLET"]').checked = true;
     document.getElementById('go').textContent = 'Confirm Scheduled Meal Plan';
@@ -124,7 +170,7 @@ function toggleMode() {
 }
 
 function chg(btn, delta) {
-  const container = btn.parentNode;
+  const container = btn.closest('.qty-control');
   const numElem = container.querySelector('.qty-num');
   const max = parseInt(container.dataset.max) || 99;
   let current = parseInt(numElem.textContent);
@@ -146,11 +192,16 @@ function drawCart() {
       const price = parseFloat(q.dataset.p);
       const subtotal = num * price;
       total += subtotal;
-      html += `<div class="cart-line-item"><span>${esc(q.dataset.n)} × ${num}</span><b>₹${subtotal}</b></div>`;
+      html += `
+        <div class="cart-row">
+          <span><b>${esc(q.dataset.n)}</b> × ${num}</span>
+          <b>₹${subtotal}</b>
+        </div>
+      `;
     }
   });
 
-  document.getElementById('lines').innerHTML = html || '<span class="m">Add items to start an order.</span>';
+  document.getElementById('lines').innerHTML = html || '<span class="m">Select quantities from the menu to start.</span>';
   document.getElementById('tot').textContent = total ? `Total: ₹${total}` : 'Total: ₹0';
   document.getElementById('go').disabled = total === 0;
 }
